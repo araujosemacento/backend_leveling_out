@@ -1,317 +1,1148 @@
 [
   {
-    "id": "col_salas_000001",
-    "name": "salas",
-    "type": "base",
-    "system": false,
-    "schema": [
+    "createRule": null,
+    "deleteRule": null,
+    "fields": [
       {
-        "id": "fld_codigo_0001",
-        "name": "codigo",
-        "type": "text",
-        "system": false,
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
         "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 2,
-          "max": 64,
-          "pattern": ""
-        }
+        "system": true,
+        "type": "text"
       },
       {
-        "id": "fld_fase_000002",
-        "name": "fase",
-        "type": "select",
-        "system": false,
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text455797646",
+        "max": 0,
+        "min": 0,
+        "name": "collectionRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
         "required": true,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "LOBBY",
-            "INICIATIVA",
-            "ESCOLHA_ESPECTRO",
-            "RODADA_DICA",
-            "RODADA_PALPITE",
-            "REVELACAO",
-            "FIM_JOGO"
-          ]
-        }
+        "system": true,
+        "type": "text"
       },
       {
-        "id": "fld_rodada_0003",
-        "name": "rodada",
-        "type": "number",
-        "system": false,
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text127846527",
+        "max": 0,
+        "min": 0,
+        "name": "recordRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
         "required": true,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 1,
-          "max": 100,
-          "noDecimal": true
-        }
+        "system": true,
+        "type": "text"
       },
       {
-        "id": "fld_eqativa_004",
-        "name": "equipe_ativa",
-        "type": "select",
-        "system": false,
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1582905952",
+        "max": 0,
+        "min": 0,
+        "name": "method",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
         "required": true,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "A",
-            "B"
-          ]
-        }
+        "system": true,
+        "type": "text"
       },
       {
-        "id": "fld_esp_esq_005",
-        "name": "espectro_esquerda",
-        "type": "text",
-        "system": false,
-        "required": false,
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": null,
-          "max": 128,
-          "pattern": ""
-        }
+        "system": true,
+        "type": "autodate"
       },
       {
-        "id": "fld_esp_dir_006",
-        "name": "espectro_direita",
-        "type": "text",
-        "system": false,
-        "required": false,
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": null,
-          "max": 128,
-          "pattern": ""
-        }
-      },
-      {
-        "id": "fld_meta_000007",
-        "name": "meta_oculta",
-        "type": "number",
-        "system": false,
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 100,
-          "noDecimal": true
-        }
-      },
-      {
-        "id": "fld_dica_000008",
-        "name": "dica",
-        "type": "text",
-        "system": false,
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": null,
-          "max": 256,
-          "pattern": ""
-        }
-      },
-      {
-        "id": "fld_palpite_009",
-        "name": "palpite",
-        "type": "number",
-        "system": false,
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 100,
-          "noDecimal": true
-        }
-      },
-      {
-        "id": "fld_pontos_0010",
-        "name": "pontos_rodada",
-        "type": "number",
-        "system": false,
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 4,
-          "noDecimal": true
-        }
-      },
-      {
-        "id": "fld_plac_a_0011",
-        "name": "placar_a",
-        "type": "number",
-        "system": false,
-        "required": true,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 999,
-          "noDecimal": true
-        }
-      },
-      {
-        "id": "fld_plac_b_0012",
-        "name": "placar_b",
-        "type": "number",
-        "system": false,
-        "required": true,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 0,
-          "max": 999,
-          "noDecimal": true
-        }
-      },
-      {
-        "id": "fld_vencedor_13",
-        "name": "vencedor",
-        "type": "select",
-        "system": false,
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "A",
-            "B"
-          ]
-        }
+        "system": true,
+        "type": "autodate"
       }
     ],
+    "id": "pbc_2279338944",
+    "indexes": [
+      "CREATE INDEX `idx_mfas_collectionRef_recordRef` ON `_mfas` (collectionRef,recordRef)"
+    ],
+    "listRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId",
+    "name": "_mfas",
+    "system": true,
+    "type": "base",
+    "updateRule": null,
+    "viewRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId"
+  },
+  {
+    "createRule": null,
+    "deleteRule": null,
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text455797646",
+        "max": 0,
+        "min": 0,
+        "name": "collectionRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text127846527",
+        "max": 0,
+        "min": 0,
+        "name": "recordRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cost": 8,
+        "help": "",
+        "hidden": true,
+        "id": "password901924565",
+        "max": 0,
+        "min": 0,
+        "name": "password",
+        "pattern": "",
+        "presentable": false,
+        "required": true,
+        "system": true,
+        "type": "password"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": true,
+        "id": "text3866985172",
+        "max": 0,
+        "min": 0,
+        "name": "sentTo",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      }
+    ],
+    "id": "pbc_1638494021",
+    "indexes": [
+      "CREATE INDEX `idx_otps_collectionRef_recordRef` ON `_otps` (collectionRef, recordRef)"
+    ],
+    "listRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId",
+    "name": "_otps",
+    "system": true,
+    "type": "base",
+    "updateRule": null,
+    "viewRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId"
+  },
+  {
+    "createRule": null,
+    "deleteRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text455797646",
+        "max": 0,
+        "min": 0,
+        "name": "collectionRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text127846527",
+        "max": 0,
+        "min": 0,
+        "name": "recordRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text2462348188",
+        "max": 0,
+        "min": 0,
+        "name": "provider",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1044722854",
+        "max": 0,
+        "min": 0,
+        "name": "providerId",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      }
+    ],
+    "id": "pbc_2281828961",
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_externalAuths_record_provider` ON `_externalAuths` (collectionRef, recordRef, provider)",
+      "CREATE UNIQUE INDEX `idx_externalAuths_collection_provider` ON `_externalAuths` (collectionRef, provider, providerId)"
+    ],
+    "listRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId",
+    "name": "_externalAuths",
+    "system": true,
+    "type": "base",
+    "updateRule": null,
+    "viewRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId"
+  },
+  {
+    "createRule": null,
+    "deleteRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text455797646",
+        "max": 0,
+        "min": 0,
+        "name": "collectionRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text127846527",
+        "max": 0,
+        "min": 0,
+        "name": "recordRef",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text4228609354",
+        "max": 0,
+        "min": 0,
+        "name": "fingerprint",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      }
+    ],
+    "id": "pbc_4275539003",
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_authOrigins_unique_pairs` ON `_authOrigins` (collectionRef, recordRef, fingerprint)"
+    ],
+    "listRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId",
+    "name": "_authOrigins",
+    "system": true,
+    "type": "base",
+    "updateRule": null,
+    "viewRule": "@request.auth.id != '' && recordRef = @request.auth.id && collectionRef = @request.auth.collectionId"
+  },
+  {
+    "authAlert": {
+      "emailTemplate": {
+        "body": "<p>Hello,</p>\n<p>We noticed a login to your {APP_NAME} account from a new location:</p>\n<p><em>{ALERT_INFO}</em></p>\n<p><strong>If this wasn't you, you should immediately change your {APP_NAME} account password to revoke access from all other locations.</strong></p>\n<p>If this was you, you may disregard this email.</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+        "subject": "Login from a new location"
+      },
+      "enabled": true
+    },
+    "authRule": "",
+    "authToken": {
+      "duration": 86400
+    },
+    "confirmEmailChangeTemplate": {
+      "body": "<p>Hello,</p>\n<p>Click on the button below to confirm your new email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Confirm new email</a>\n</p>\n<p><i>If you didn't ask to change your email address, please ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+      "subject": "Confirm your {APP_NAME} new email address"
+    },
+    "createRule": null,
+    "deleteRule": null,
+    "emailChangeToken": {
+      "duration": 1800
+    },
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cost": 0,
+        "help": "",
+        "hidden": true,
+        "id": "password901924565",
+        "max": 0,
+        "min": 8,
+        "name": "password",
+        "pattern": "",
+        "presentable": false,
+        "required": true,
+        "system": true,
+        "type": "password"
+      },
+      {
+        "autogeneratePattern": "[a-zA-Z0-9]{50}",
+        "help": "",
+        "hidden": true,
+        "id": "text2504183744",
+        "max": 60,
+        "min": 30,
+        "name": "tokenKey",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "exceptDomains": [],
+        "help": "",
+        "hidden": false,
+        "id": "email3885137012",
+        "name": "email",
+        "onlyDomains": [],
+        "presentable": false,
+        "required": true,
+        "system": true,
+        "type": "email"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "bool1547992806",
+        "name": "emailVisibility",
+        "presentable": false,
+        "required": false,
+        "system": true,
+        "type": "bool"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "bool256245529",
+        "name": "verified",
+        "presentable": false,
+        "required": false,
+        "system": true,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      }
+    ],
+    "fileToken": {
+      "duration": 180
+    },
+    "id": "pbc_3142635823",
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_tokenKey_pbc_3142635823` ON `_superusers` (`tokenKey`)",
+      "CREATE UNIQUE INDEX `idx_email_pbc_3142635823` ON `_superusers` (`email`) WHERE `email` != ''"
+    ],
+    "listRule": null,
+    "manageRule": null,
+    "mfa": {
+      "duration": 600,
+      "enabled": false,
+      "rule": ""
+    },
+    "name": "_superusers",
+    "oauth2": {
+      "enabled": false,
+      "mappedFields": {
+        "avatarURL": "",
+        "id": "",
+        "name": "",
+        "username": ""
+      }
+    },
+    "otp": {
+      "duration": 180,
+      "emailTemplate": {
+        "body": "<p>Hello,</p>\n<p>Your one-time password is: <strong>{OTP}</strong></p>\n<p><i>If you didn't ask for the one-time password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+        "subject": "OTP for {APP_NAME}"
+      },
+      "enabled": false,
+      "length": 8
+    },
+    "passwordAuth": {
+      "enabled": true,
+      "identityFields": [
+        "email"
+      ]
+    },
+    "passwordResetToken": {
+      "duration": 1800
+    },
+    "resetPasswordTemplate": {
+      "body": "<p>Hello,</p>\n<p>Click on the button below to reset your password.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Reset password</a>\n</p>\n<p><i>If you didn't ask to reset your password, please ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+      "subject": "Reset your {APP_NAME} password"
+    },
+    "system": true,
+    "type": "auth",
+    "updateRule": null,
+    "verificationTemplate": {
+      "body": "<p>Hello,</p>\n<p>Thank you for joining us at {APP_NAME}.</p>\n<p>Click on the button below to verify your email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify</a>\n</p>\n<p><i>If you didn't recently register, please ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+      "subject": "Verify your {APP_NAME} email"
+    },
+    "verificationToken": {
+      "duration": 86400
+    },
+    "viewRule": null
+  },
+  {
+    "authAlert": {
+      "emailTemplate": {
+        "body": "<p>Hello,</p>\n<p>We noticed a login to your {APP_NAME} account from a new location:</p>\n<p><em>{ALERT_INFO}</em></p>\n<p><strong>If this wasn't you, you should immediately change your {APP_NAME} account password to revoke access from all other locations.</strong></p>\n<p>If this was you, you may disregard this email.</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+        "subject": "Login from a new location"
+      },
+      "enabled": true
+    },
+    "authRule": "",
+    "authToken": {
+      "duration": 432000
+    },
+    "confirmEmailChangeTemplate": {
+      "body": "<p>Hello,</p>\n<p>Click on the button below to confirm your new email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Confirm new email</a>\n</p>\n<p><i>If you didn't ask to change your email address, please ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+      "subject": "Confirm your {APP_NAME} new email address"
+    },
+    "createRule": "",
+    "deleteRule": "id = @request.auth.id",
+    "emailChangeToken": {
+      "duration": 1800
+    },
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cost": 0,
+        "help": "",
+        "hidden": true,
+        "id": "password901924565",
+        "max": 0,
+        "min": 8,
+        "name": "password",
+        "pattern": "",
+        "presentable": false,
+        "required": true,
+        "system": true,
+        "type": "password"
+      },
+      {
+        "autogeneratePattern": "[a-zA-Z0-9]{50}",
+        "help": "",
+        "hidden": true,
+        "id": "text2504183744",
+        "max": 60,
+        "min": 30,
+        "name": "tokenKey",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "exceptDomains": [],
+        "help": "",
+        "hidden": false,
+        "id": "email3885137012",
+        "name": "email",
+        "onlyDomains": [],
+        "presentable": false,
+        "required": true,
+        "system": true,
+        "type": "email"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "bool1547992806",
+        "name": "emailVisibility",
+        "presentable": false,
+        "required": false,
+        "system": true,
+        "type": "bool"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "bool256245529",
+        "name": "verified",
+        "presentable": false,
+        "required": false,
+        "system": true,
+        "type": "bool"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1579384326",
+        "max": 255,
+        "min": 0,
+        "name": "name",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "file376926767",
+        "maxSelect": 1,
+        "maxSize": 0,
+        "mimeTypes": [
+          "image/jpeg",
+          "image/png",
+          "image/svg+xml",
+          "image/gif",
+          "image/webp"
+        ],
+        "name": "avatar",
+        "presentable": false,
+        "protected": false,
+        "required": false,
+        "system": false,
+        "thumbs": [],
+        "type": "file"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "fileToken": {
+      "duration": 180
+    },
+    "id": "_pb_users_auth_",
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+      "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+    ],
+    "listRule": "id = @request.auth.id",
+    "manageRule": null,
+    "mfa": {
+      "duration": 600,
+      "enabled": false,
+      "rule": ""
+    },
+    "name": "users",
+    "oauth2": {
+      "enabled": false,
+      "mappedFields": {
+        "avatarURL": "avatar",
+        "id": "",
+        "name": "name",
+        "username": ""
+      }
+    },
+    "otp": {
+      "duration": 180,
+      "emailTemplate": {
+        "body": "<p>Hello,</p>\n<p>Your one-time password is: <strong>{OTP}</strong></p>\n<p><i>If you didn't ask for the one-time password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+        "subject": "OTP for {APP_NAME}"
+      },
+      "enabled": false,
+      "length": 8
+    },
+    "passwordAuth": {
+      "enabled": true,
+      "identityFields": [
+        "email"
+      ]
+    },
+    "passwordResetToken": {
+      "duration": 1800
+    },
+    "resetPasswordTemplate": {
+      "body": "<p>Hello,</p>\n<p>Click on the button below to reset your password.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Reset password</a>\n</p>\n<p><i>If you didn't ask to reset your password, please ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+      "subject": "Reset your {APP_NAME} password"
+    },
+    "system": false,
+    "type": "auth",
+    "updateRule": "id = @request.auth.id",
+    "verificationTemplate": {
+      "body": "<p>Hello,</p>\n<p>Thank you for joining us at {APP_NAME}.</p>\n<p>Click on the button below to verify your email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify</a>\n</p>\n<p><i>If you didn't recently register, please ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+      "subject": "Verify your {APP_NAME} email"
+    },
+    "verificationToken": {
+      "duration": 86400
+    },
+    "viewRule": "id = @request.auth.id"
+  },
+  {
+    "createRule": "",
+    "deleteRule": null,
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text540224921",
+        "max": 64,
+        "min": 2,
+        "name": "codigo",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select1339451702",
+        "maxSelect": 1,
+        "name": "fase",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "LOBBY",
+          "INICIATIVA",
+          "ESCOLHA_ESPECTRO",
+          "RODADA_DICA",
+          "RODADA_PALPITE",
+          "REVELACAO",
+          "FIM_JOGO"
+        ]
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number708826075",
+        "max": 100,
+        "min": 1,
+        "name": "rodada",
+        "onlyInt": false,
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select3640096688",
+        "maxSelect": 1,
+        "name": "equipe_ativa",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "A",
+          "B"
+        ]
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text3715813791",
+        "max": 128,
+        "min": 0,
+        "name": "espectro_esquerda",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1148095299",
+        "max": 128,
+        "min": 0,
+        "name": "espectro_direita",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number3898618241",
+        "max": 100,
+        "min": 0,
+        "name": "meta_oculta",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text2791515725",
+        "max": 256,
+        "min": 0,
+        "name": "dica",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number3034329328",
+        "max": 100,
+        "min": 0,
+        "name": "palpite",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number4246954627",
+        "max": 4,
+        "min": 0,
+        "name": "pontos_rodada",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number1260881159",
+        "max": null,
+        "min": 0,
+        "name": "placar_a",
+        "onlyInt": false,
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "number3526284477",
+        "max": null,
+        "min": 0,
+        "name": "placar_b",
+        "onlyInt": false,
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select632767550",
+        "maxSelect": 1,
+        "name": "vencedor",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "select",
+        "values": [
+          "A",
+          "B"
+        ]
+      }
+    ],
+    "id": "pbc_3299543979",
     "indexes": [
       "CREATE UNIQUE INDEX `idx_salas_codigo` ON `salas` (`codigo`)"
     ],
     "listRule": "",
-    "viewRule": "",
-    "createRule": "",
+    "name": "salas",
+    "system": false,
+    "type": "base",
     "updateRule": "",
-    "deleteRule": null
+    "viewRule": ""
   },
   {
-    "id": "col_jogad_000002",
-    "name": "jogadores",
-    "type": "base",
-    "system": false,
-    "schema": [
+    "createRule": "",
+    "deleteRule": "",
+    "fields": [
       {
-        "id": "fld_j_salacod_01",
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text3491245473",
+        "max": 64,
+        "min": 2,
         "name": "sala_codigo",
-        "type": "text",
-        "system": false,
-        "required": true,
+        "pattern": "",
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 2,
-          "max": 64,
-          "pattern": ""
-        }
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
       },
       {
-        "id": "fld_j_playerid02",
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text2582050271",
+        "max": 128,
+        "min": 4,
         "name": "player_id",
-        "type": "text",
-        "system": false,
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
         "required": true,
-        "presentable": true,
-        "unique": false,
-        "options": {
-          "min": 4,
-          "max": 128,
-          "pattern": ""
-        }
+        "system": false,
+        "type": "text"
       },
       {
-        "id": "fld_j_nome_00003",
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1421693708",
+        "max": 64,
+        "min": 1,
         "name": "nome",
-        "type": "text",
-        "system": false,
-        "required": true,
+        "pattern": "",
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": 1,
-          "max": 64,
-          "pattern": ""
-        }
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
       },
       {
-        "id": "fld_j_equipe_004",
+        "help": "",
+        "hidden": false,
+        "id": "select608811541",
+        "maxSelect": 1,
         "name": "equipe",
-        "type": "select",
-        "system": false,
-        "required": true,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "A",
-            "B",
-            "ESPECTADOR"
-          ]
-        }
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "A",
+          "B",
+          "ESPECTADOR"
+        ]
       },
       {
-        "id": "fld_j_papel_0005",
+        "help": "",
+        "hidden": false,
+        "id": "select3021299061",
+        "maxSelect": 1,
         "name": "papel",
-        "type": "select",
-        "system": false,
-        "required": true,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "maxSelect": 1,
-          "values": [
-            "CODIFICADOR",
-            "PALPITEIRO",
-            "ESPECTADOR"
-          ]
-        }
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "CODIFICADOR",
+          "PALPITEIRO",
+          "ESPECTADOR"
+        ]
       },
       {
-        "id": "fld_j_lastseen06",
+        "help": "",
+        "hidden": false,
+        "id": "date846843460",
+        "max": "",
+        "min": "",
         "name": "last_seen",
-        "type": "date",
-        "system": false,
-        "required": true,
         "presentable": false,
-        "unique": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
+        "required": true,
+        "system": false,
+        "type": "date"
       }
     ],
+    "id": "pbc_1176096781",
     "indexes": [
       "CREATE INDEX `idx_jogadores_sala` ON `jogadores` (`sala_codigo`)",
-      "CREATE INDEX `idx_jogadores_player_id` ON `jogadores` (`player_id`)"
+      "CREATE INDEX `idx_jogadores_player` ON `jogadores` (`player_id`)"
     ],
     "listRule": "",
-    "viewRule": "",
-    "createRule": "",
+    "name": "jogadores",
+    "system": false,
+    "type": "base",
     "updateRule": "",
-    "deleteRule": ""
+    "viewRule": ""
   }
 ]

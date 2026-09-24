@@ -81,16 +81,16 @@ backend/
 
 O PocketBase executa JavaScript através do motor **Goja** (compatível com ES5/ES6). Fique atento aos padrões suportados:
 
-### Regras de Sintaxe e Globais do Goja:
-- Use as funções globais fornecidas pelo PocketBase:
-  - `onRecordBeforeUpdateRequest(callback, collectionName)`
-  - `onRecordAfterUpdateRequest(callback, collectionName)`
-  - `onRecordBeforeCreateRequest(callback, collectionName)`
+### Regras de Sintaxe e Globais do Goja (PocketBase v0.23+ / v0.40+):
+- Use as funções globais e métodos do `$app`:
+  - `onRecordUpdateRequest((e) => { ... return e.next(); }, collectionName)`
+  - `onRecordCreateRequest((e) => { ... return e.next(); }, collectionName)`
   - `cronAdd(tag, cronExpression, callback)`
-  - `$app.dao().findRecordById(collection, id)`
-  - `$app.dao().deleteRecord(record)`
-  - `$app.dao().saveRecord(record)`
-  - `$app.dao().db().select(...).from(...).all(...)`
+  - `$app.findRecordsByFilter(collection, filter, sort, limit, offset, params)`
+  - `$app.findRecordById(collection, id)`
+  - `$app.delete(record)`
+  - `$app.save(record)`
+- Em todos os hooks de requisição (`*Request`), é obrigatório finalizar retornando `return e.next();` para que a requisição prossiga.
 - **Não** utilize módulos Node.js (`require('fs')`, `npm`, `process.env`). Apenas funções nativas e APIs fornecidas pelo PocketBase (`$os`, `$http`, `$app`, etc.).
 - Sempre valide tipos e garanta tratamento de erros com `try / catch` para evitar interrupção do serviço.
 

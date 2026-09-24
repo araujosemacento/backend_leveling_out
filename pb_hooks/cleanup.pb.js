@@ -1,39 +1,54 @@
 // pb_hooks/cleanup.pb.js
 // Rotina de higienização automática periódica (Zero Bloat)
-// Pura salas e jogadores inativos há mais de 15 minutos do banco SQLite
+// Purga salas e jogadores inativos há mais de 15 minutos do banco SQLite
 
 cronAdd("cleanupInactiveRooms", "*/5 * * * *", () => {
     const inactivityMinutes = 15;
-    // Formata a data limite em UTC no formato SQLite 'YYYY-MM-DD HH:MM:SS.sssZ'
+    // Data limite em formato ISO / SQLite UTC
     const thresholdDate = new Date(Date.now() - inactivityMinutes * 60 * 1000)
         .toISOString()
         .replace("T", " ");
 
     try {
         // 1. Localiza salas inativas com updated anterior à data limite
-        const inactiveRooms = $app.dao().db()
-            .select("id", "codigo")
-            .from("salas")
-            .where($dbx.exp("updated < {:threshold}", { threshold: thresholdDate }))
-            .all();
+        const inactiveRooms = $app.findRecordsByFilter(
+            "salas",
+            "updated < {:threshold}",
+            "-updated",
+            0,
+            0,
+            { threshold: thresholdDate }
+        );
 
         if (inactiveRooms && inactiveRooms.length > 0) {
             console.log(`[CLEANUP] Iniciando higienização: ${inactiveRooms.length} sala(s) inativa(s) detectada(s).`);
 
             for (let i = 0; i < inactiveRooms.length; i++) {
                 const room = inactiveRooms[i];
+                const salaCodigo = room.getString("codigo");
 
-                // Remove os jogadores vinculados à sala
-                $app.dao().db()
-                    .delete("jogadores", $dbx.exp("sala_codigo = {:codigo}", { codigo: room.codigo }))
-                    .execute();
+                // Localiza e remove os jogadores vinculados à sala
+                try {
+                    const players = $app.findRecordsByFilter(
+                        "jogadores",
+                        "sala_codigo = {:codigo}",
+                        "",
+                        0,
+                        0,
+                        { codigo: salaCodigo }
+                    );
+
+                    for (let j = 0; j < players.length; j++) {
+                        $app.delete(players[j]);
+                    }
+                } catch (pErr) {
+                    console.log(`[CLEANUP] Aviso ao remover jogadores da sala '${salaCodigo}': ${pErr}`);
+                }
 
                 // Remove o registro da sala
-                $app.dao().db()
-                    .delete("salas", $dbx.exp("id = {:id}", { id: room.id }))
-                    .execute();
+                $app.delete(room);
 
-                console.log(`[CLEANUP] Sala '${room.codigo}' (id: ${room.id}) e participantes purgados.`);
+                console.log(`[CLEANUP] Sala '${salaCodigo}' e participantes purgados.`);
             }
 
             console.log("[CLEANUP] Higienização concluída com sucesso. Espaço liberado.");

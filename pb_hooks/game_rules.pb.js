@@ -1,7 +1,7 @@
 // pb_hooks/game_rules.pb.js
 // Validações de integridade, cálculo de pontuação e transições de fase no servidor
 
-onRecordBeforeUpdateRequest((e) => {
+onRecordUpdateRequest((e) => {
     const fase = e.record.get("fase");
 
     // 1. Preparação para a Rodada de Dica: assegura meta percentual válida
@@ -65,4 +65,6 @@ onRecordBeforeUpdateRequest((e) => {
             }
         }
     }
+
+    return e.next();
 }, "salas");
