@@ -1,0 +1,16 @@
+# PocketBase data and local database
+pb_data/
+pb_migrations/
+
+# Local binary
+pocketbase
+*.zip
+
+# Local environment
+.env
+.env.local
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db

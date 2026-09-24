@@ -1,0 +1,317 @@
+[
+  {
+    "id": "col_salas_000001",
+    "name": "salas",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "fld_codigo_0001",
+        "name": "codigo",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "min": 2,
+          "max": 64,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "fld_fase_000002",
+        "name": "fase",
+        "type": "select",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "LOBBY",
+            "INICIATIVA",
+            "ESCOLHA_ESPECTRO",
+            "RODADA_DICA",
+            "RODADA_PALPITE",
+            "REVELACAO",
+            "FIM_JOGO"
+          ]
+        }
+      },
+      {
+        "id": "fld_rodada_0003",
+        "name": "rodada",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 100,
+          "noDecimal": true
+        }
+      },
+      {
+        "id": "fld_eqativa_004",
+        "name": "equipe_ativa",
+        "type": "select",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "A",
+            "B"
+          ]
+        }
+      },
+      {
+        "id": "fld_esp_esq_005",
+        "name": "espectro_esquerda",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 128,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "fld_esp_dir_006",
+        "name": "espectro_direita",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 128,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "fld_meta_000007",
+        "name": "meta_oculta",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 100,
+          "noDecimal": true
+        }
+      },
+      {
+        "id": "fld_dica_000008",
+        "name": "dica",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 256,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "fld_palpite_009",
+        "name": "palpite",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 100,
+          "noDecimal": true
+        }
+      },
+      {
+        "id": "fld_pontos_0010",
+        "name": "pontos_rodada",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 4,
+          "noDecimal": true
+        }
+      },
+      {
+        "id": "fld_plac_a_0011",
+        "name": "placar_a",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 999,
+          "noDecimal": true
+        }
+      },
+      {
+        "id": "fld_plac_b_0012",
+        "name": "placar_b",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 999,
+          "noDecimal": true
+        }
+      },
+      {
+        "id": "fld_vencedor_13",
+        "name": "vencedor",
+        "type": "select",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "A",
+            "B"
+          ]
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_salas_codigo` ON `salas` (`codigo`)"
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "",
+    "deleteRule": null
+  },
+  {
+    "id": "col_jogad_000002",
+    "name": "jogadores",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "fld_j_salacod_01",
+        "name": "sala_codigo",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 2,
+          "max": 64,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "fld_j_playerid02",
+        "name": "player_id",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "min": 4,
+          "max": 128,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "fld_j_nome_00003",
+        "name": "nome",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 64,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "fld_j_equipe_004",
+        "name": "equipe",
+        "type": "select",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "A",
+            "B",
+            "ESPECTADOR"
+          ]
+        }
+      },
+      {
+        "id": "fld_j_papel_0005",
+        "name": "papel",
+        "type": "select",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "CODIFICADOR",
+            "PALPITEIRO",
+            "ESPECTADOR"
+          ]
+        }
+      },
+      {
+        "id": "fld_j_lastseen06",
+        "name": "last_seen",
+        "type": "date",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX `idx_jogadores_sala` ON `jogadores` (`sala_codigo`)",
+      "CREATE INDEX `idx_jogadores_player_id` ON `jogadores` (`player_id`)"
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "",
+    "deleteRule": ""
+  }
+]
