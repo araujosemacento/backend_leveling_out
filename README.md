@@ -16,14 +16,25 @@ Este diretório contém o servidor em tempo real e as regras de domínio para o 
 
 ### Passo 1: Baixar o PocketBase
 
-Você pode usar o script automatizado ou baixar manualmente:
+Você pode usar um dos scripts automatizados conforme seu sistema operacional:
 
+Para Linux ou macOS (Bash):
 ```bash
 chmod +x scripts/download_pocketbase.sh
 ./scripts/download_pocketbase.sh
 ```
 
-Ou acesse as [Releases oficiais do PocketBase](https://github.com/pocketbase/pocketbase/releases) e descompacte o binário `pocketbase` nesta pasta.
+Para Windows (duplo clique no arquivo ou via CMD/PowerShell):
+```cmd
+scripts\download_pocketbase.bat
+```
+
+Para qualquer sistema operacional com Python 3:
+```bash
+python3 scripts/download_pocketbase.py
+```
+
+Ou acesse as [Releases oficiais do PocketBase](https://github.com/pocketbase/pocketbase/releases) e descompacte o executável `pocketbase` nesta pasta.
 
 ### Passo 2: Executar o Servidor
 

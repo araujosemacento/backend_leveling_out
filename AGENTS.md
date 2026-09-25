@@ -71,7 +71,9 @@ backend/
 │   ├── cleanup.pb.js          <-- Cron para purga de dados inativos (> 15 min) em cascata
 │   └── game_rules.pb.js       <-- Validações de integridade, cálculo de pontos e sincronização
 ├── scripts/                   <-- Scripts utilitários de conveniência
-│   ├── download_pocketbase.sh <-- Baixa binário oficial do PocketBase
+│   ├── download_pocketbase.sh <-- Baixa binário oficial do PocketBase (Bash)
+│   ├── download_pocketbase.bat <-- Baixa binário oficial do PocketBase (Windows)
+│   ├── download_pocketbase.py <-- Baixa binário oficial do PocketBase (Python)
 │   └── start_tunnel.sh        <-- Exemplos de ativação de túnel (Tailscale/Cloudflare)
 ├── .env.example               <-- Exemplo de configuração de ambiente
 └── .gitignore                 <-- Bloqueio de pb_data/ e binários locais
