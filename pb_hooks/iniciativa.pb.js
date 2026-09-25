@@ -96,6 +96,7 @@ routerAdd("POST", "/api/ppt/lance", (e) => {
 
     rodadaData.resultado = resultadoObj;
     $app.store().set(storeKey, JSON.stringify(rodadaData));
+    $app.store().set("ppt_last_" + salaCodigo, JSON.stringify(resultadoObj));
 
     // Atualiza a coleção 'salas' com a pontuação do PPT
     try {
@@ -138,8 +139,32 @@ routerAdd("GET", "/api/ppt/status", (e) => {
         return e.json(400, { message: "sala_codigo é obrigatório." });
     }
 
+    // Verifica se há resultado recente armazenado para a sala
+    const lastKey = "ppt_last_" + salaCodigo;
+    let lastResultado = null;
+    if ($app.store().has(lastKey)) {
+        try {
+            const rawLast = $app.store().get(lastKey);
+            lastResultado = typeof rawLast === "string" ? JSON.parse(rawLast) : rawLast;
+        } catch (_) {}
+    }
+
+    // Se a consulta pediu a rodada que acabou de ser resolvida
+    if (lastResultado && lastResultado.rodada === rodada) {
+        return e.json(200, lastResultado);
+    }
+
     const storeKey = "ppt_" + salaCodigo + "_" + rodada;
     if (!$app.store().has(storeKey)) {
+        // Se a rodada consultada é a nova (rodada + 1), entrega o último resultado para o SSE
+        if (lastResultado && lastResultado.rodada === rodada - 1) {
+            return e.json(200, {
+                status: "AGUARDANDO_LANCES",
+                rodada: rodada,
+                ultimo_resultado: lastResultado,
+                equipes_enviadas: []
+            });
+        }
         return e.json(200, { status: "AGUARDANDO_LANCES", rodada: rodada, equipes_enviadas: [] });
     }
 
@@ -159,7 +184,8 @@ routerAdd("GET", "/api/ppt/status", (e) => {
             status: "AGUARDANDO_OPONENTE",
             rodada: rodada,
             jogadores_enviados: pids.length,
-            equipes_enviadas: equipesEnviadas
+            equipes_enviadas: equipesEnviadas,
+            ultimo_resultado: lastResultado
         });
     } catch (_) {
         return e.json(200, { status: "AGUARDANDO_OPONENTE", rodada: rodada, equipes_enviadas: [] });
