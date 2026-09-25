@@ -1,6 +1,6 @@
 // pb_hooks/cleanup.pb.js
 // Rotina de higienização automática periódica (Zero Bloat)
-// Purga salas e jogadores inativos há mais de 15 minutos do banco SQLite
+// Purga salas, jogadores e rodadas inativos há mais de 15 minutos do banco SQLite
 
 cronAdd("cleanupInactiveRooms", "*/5 * * * *", () => {
     const inactivityMinutes = 15;
@@ -45,10 +45,28 @@ cronAdd("cleanupInactiveRooms", "*/5 * * * *", () => {
                     console.log(`[CLEANUP] Aviso ao remover jogadores da sala '${salaCodigo}': ${pErr}`);
                 }
 
+                // Localiza e remove as rodadas vinculadas à sala
+                try {
+                    const rounds = $app.findRecordsByFilter(
+                        "rodadas",
+                        "sala_codigo = {:codigo}",
+                        "",
+                        0,
+                        0,
+                        { codigo: salaCodigo }
+                    );
+
+                    for (let k = 0; k < rounds.length; k++) {
+                        $app.delete(rounds[k]);
+                    }
+                } catch (rErr) {
+                    console.log(`[CLEANUP] Aviso ao remover rodadas da sala '${salaCodigo}': ${rErr}`);
+                }
+
                 // Remove o registro da sala
                 $app.delete(room);
 
-                console.log(`[CLEANUP] Sala '${salaCodigo}' e participantes purgados.`);
+                console.log(`[CLEANUP] Sala '${salaCodigo}', participantes e histórico de rodadas purgados.`);
             }
 
             console.log("[CLEANUP] Higienização concluída com sucesso. Espaço liberado.");

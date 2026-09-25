@@ -1,6 +1,6 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((app) => {
-    // 1. Coleção: salas
+    // 1. Coleção: salas (Sessão e Ciclo Macro)
     const salas = new Collection({
         type: "base",
         name: "salas",
@@ -25,15 +25,12 @@ migrate((app) => {
                 values: [
                     "LOBBY",
                     "INICIATIVA",
-                    "ESCOLHA_ESPECTRO",
-                    "RODADA_DICA",
-                    "RODADA_PALPITE",
-                    "REVELACAO",
+                    "EM_RODADA",
                     "FIM_JOGO"
                 ]
             },
             {
-                name: "rodada",
+                name: "rodada_atual",
                 type: "number",
                 required: true,
                 min: 1,
@@ -45,6 +42,89 @@ migrate((app) => {
                 required: true,
                 maxSelect: 1,
                 values: ["A", "B"]
+            },
+            {
+                name: "placar_a",
+                type: "number",
+                required: false,
+                min: 0
+            },
+            {
+                name: "placar_b",
+                type: "number",
+                required: false,
+                min: 0
+            },
+            {
+                name: "vencedor",
+                type: "select",
+                required: false,
+                maxSelect: 1,
+                values: ["A", "B"]
+            },
+            {
+                name: "created",
+                type: "autodate",
+                onCreate: true,
+                onUpdate: false
+            },
+            {
+                name: "updated",
+                type: "autodate",
+                onCreate: true,
+                onUpdate: true
+            }
+        ],
+        indexes: [
+            "CREATE UNIQUE INDEX `idx_salas_codigo` ON `salas` (`codigo`)"
+        ]
+    });
+
+    app.save(salas);
+
+    // 2. Coleção: rodadas (Ciclo Micro da Jogada de Dedução)
+    const rodadas = new Collection({
+        type: "base",
+        name: "rodadas",
+        listRule: "",
+        viewRule: "",
+        createRule: "",
+        updateRule: "",
+        deleteRule: "",
+        fields: [
+            {
+                name: "sala_codigo",
+                type: "text",
+                required: true,
+                min: 2,
+                max: 64
+            },
+            {
+                name: "numero",
+                type: "number",
+                required: true,
+                min: 1,
+                max: 100
+            },
+            {
+                name: "equipe",
+                type: "select",
+                required: true,
+                maxSelect: 1,
+                values: ["A", "B"]
+            },
+            {
+                name: "fase_rodada",
+                type: "select",
+                required: true,
+                maxSelect: 1,
+                values: [
+                    "ESCOLHA_ESPECTRO",
+                    "DICA",
+                    "PALPITE",
+                    "REVELADA",
+                    "CONCLUIDA"
+                ]
             },
             {
                 name: "espectro_esquerda",
@@ -79,30 +159,11 @@ migrate((app) => {
                 max: 100
             },
             {
-                name: "pontos_rodada",
+                name: "pontos",
                 type: "number",
                 required: false,
                 min: 0,
                 max: 4
-            },
-            {
-                name: "placar_a",
-                type: "number",
-                required: true,
-                min: 0
-            },
-            {
-                name: "placar_b",
-                type: "number",
-                required: true,
-                min: 0
-            },
-            {
-                name: "vencedor",
-                type: "select",
-                required: false,
-                maxSelect: 1,
-                values: ["A", "B"]
             },
             {
                 name: "created",
@@ -118,13 +179,14 @@ migrate((app) => {
             }
         ],
         indexes: [
-            "CREATE UNIQUE INDEX `idx_salas_codigo` ON `salas` (`codigo`)"
+            "CREATE INDEX `idx_rodadas_sala` ON `rodadas` (`sala_codigo`)",
+            "CREATE INDEX `idx_rodadas_sala_numero` ON `rodadas` (`sala_codigo`, `numero`)"
         ]
     });
 
-    app.save(salas);
+    app.save(rodadas);
 
-    // 2. Coleção: jogadores
+    // 3. Coleção: jogadores (Presença e Papéis)
     const jogadores = new Collection({
         type: "base",
         name: "jogadores",
@@ -160,14 +222,22 @@ migrate((app) => {
                 type: "select",
                 required: true,
                 maxSelect: 1,
-                values: ["A", "B", "ESPECTADOR"]
+                values: [
+                    "A",
+                    "B",
+                    "ESPECTADOR"
+                ]
             },
             {
                 name: "papel",
                 type: "select",
                 required: true,
                 maxSelect: 1,
-                values: ["CODIFICADOR", "PALPITEIRO", "ESPECTADOR"]
+                values: [
+                    "CODIFICADOR",
+                    "PALPITEIRO",
+                    "ESPECTADOR"
+                ]
             },
             {
                 name: "last_seen",
@@ -198,6 +268,11 @@ migrate((app) => {
     try {
         const salas = app.findCollectionByNameOrId("salas");
         app.delete(salas);
+    } catch (_) {}
+
+    try {
+        const rodadas = app.findCollectionByNameOrId("rodadas");
+        app.delete(rodadas);
     } catch (_) {}
 
     try {

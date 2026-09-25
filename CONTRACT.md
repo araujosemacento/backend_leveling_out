@@ -6,78 +6,109 @@ Este documento define o contrato de dados estrito e o protocolo de sincronizaç�
 
 ## 1. Coleções do PocketBase
 
+A persistência do jogo é particionada em três coleções complementares com responsabilidades isoladas:
+
 ### 1.1. Coleção `salas`
-Representa a instância de uma partida em andamento.
+Representa a instância de uma partida em andamento (ciclo macro de sessão e placar acumulado).
 
 | Campo | Tipo | Obrigatório | Descrição / Valores Permitidos |
 | :--- | :--- | :---: | :--- |
 | `id` | `TEXT` (15 chars) | Sim | Identificador único autogerado pelo PocketBase. |
 | `codigo` | `TEXT` | Sim | Código alfanumérico da sala (ex.: `"alpha-42"`). Índice único. |
-| `fase` | `SELECT` | Sim | Estado do game loop:<br>• `LOBBY`<br>• `INICIATIVA` (minijogo Pedra-Papel-Tesoura)<br>• `ESCOLHA_ESPECTRO`<br>• `RODADA_DICA`<br>• `RODADA_PALPITE`<br>• `REVELACAO`<br>• `FIM_JOGO` |
-| `rodada` | `NUMBER` | Sim | Número ordinal da rodada (inicia em `1`). |
-| `equipe_ativa` | `SELECT` | Sim | Equipe que joga no turno atual: `'A'` (Azul) ou `'B'` (Vermelha). |
-| `espectro_esquerda` | `TEXT` | Não | Extremo esquerdo da carta conceitual (ex.: `"Famoso"`). |
-| `espectro_direita` | `TEXT` | Não | Extremo direito da carta conceitual (ex.: `"Anônimo"`). |
-| `meta_oculta` | `NUMBER` | Não | Nível percentual real (inteiro entre `0` e `100`). |
-| `dica` | `TEXT` | Não | Pista textual formulada pelo Codificador da vez. |
-| `palpite` | `NUMBER` | Não | Palpite percentual formulado pelo Palpiteiro (inteiro entre `0` e `100`). |
-| `pontos_rodada` | `NUMBER` | Não | Pontuação obtida na revelação (`0`, `2`, `3` ou `4`). |
-| `placar_a` | `NUMBER` | Sim | Pontuação acumulada da Equipe Azul (default: `0`). |
-| `placar_b` | `NUMBER` | Sim | Pontuação acumulada da Equipe Vermelha (default: `0`). |
+| `fase` | `SELECT` | Sim | Estado global da partida: `LOBBY`, `INICIATIVA`, `EM_RODADA`, `FIM_JOGO`. |
+| `rodada_atual` | `NUMBER` | Sim | Número ordinal da rodada em andamento (inicia em `1`). |
+| `equipe_ativa` | `SELECT` | Sim | Equipe que joga no turno atual: `'A'` ou `'B'`. |
+| `placar_a` | `NUMBER` | Não | Pontuação acumulada da Equipe A (default: `0`). |
+| `placar_b` | `NUMBER` | Não | Pontuação acumulada da Equipe B (default: `0`). |
 | `vencedor` | `SELECT` | Não | Equipe campeã da partida: `''`, `'A'` ou `'B'`. |
+| `created` | `AUTODATE` | Sim | Timestamp UTC de criação do registro. |
+| `updated` | `AUTODATE` | Sim | Timestamp UTC da última atualização. |
 
 #### Regras de Acesso da Coleção `salas`:
-- **List / View:** `""` (público / anônimo permitido)
-- **Create:** `""` (qualquer jogador pode inicializar uma sala)
-- **Update:** `""` (atualizações autorizadas por sala, validadas por hooks)
-- **Delete:** `@request.auth.id != ""` (bloqueado para clientes públicos; apenas hooks internos e admins podem deletar)
+1. **List / View:** `""` (público / anônimo permitido)
+2. **Create:** `""` (qualquer jogador pode inicializar uma sala)
+3. **Update:** `""` (atualizações autorizadas por sala, validadas por hooks)
+4. **Delete:** `null` (bloqueado para clientes públicos; apenas hooks internos e admins podem deletar)
 
 ---
 
-### 1.2. Coleção `jogadores`
-Representa os participantes presentes em uma sala.
+### 1.2. Coleção `rodadas`
+Registra cada jogada individual da partida (ciclo micro de dedução e histórico para métricas de sintonia).
 
 | Campo | Tipo | Obrigatório | Descrição / Valores Permitidos |
 | :--- | :--- | :---: | :--- |
 | `id` | `TEXT` (15 chars) | Sim | Identificador interno no PocketBase. |
-| `sala_codigo` | `TEXT` | Sim | Código da sala à qual o jogador pertence (para filtros rápidos). |
+| `sala_codigo` | `TEXT` | Sim | Código da sala vinculada. |
+| `numero` | `NUMBER` | Sim | Índice ordinal da rodada (1, 2, 3...). |
+| `equipe` | `SELECT` | Sim | Equipe ativa na rodada: `'A'` ou `'B'`. |
+| `fase_rodada` | `SELECT` | Sim | Fase do turno: `ESCOLHA_ESPECTRO`, `DICA`, `PALPITE`, `REVELADA`, `CONCLUIDA`. |
+| `espectro_esquerda` | `TEXT` | Não | Polo esquerdo da carta sorteada (ex.: `"Famoso"`). |
+| `espectro_direita` | `TEXT` | Não | Polo direito da carta sorteada (ex.: `"Anônimo"`). |
+| `meta_oculta` | `NUMBER` | Não | Nível percentual secreto sorteado pelo hook (5 a 95). |
+| `dica` | `TEXT` | Não | Pista textual cadastrada pelo Codificador. |
+| `palpite` | `NUMBER` | Não | Valor percentual calibrado pelo Palpiteiro (0 a 100). |
+| `pontos` | `NUMBER` | Não | Pontos obtidos na jogada (`4`, `3`, `2` ou `0`). |
+| `created` | `AUTODATE` | Sim | Timestamp UTC de criação do registro. |
+| `updated` | `AUTODATE` | Sim | Timestamp UTC da última atualização. |
+
+#### Regras de Acesso da Coleção `rodadas`:
+1. **List / View:** `""` (público)
+2. **Create:** `""` (público)
+3. **Update:** `""` (público, validado por hooks Goja)
+4. **Delete:** `""` (permitido para manutenção)
+
+---
+
+### 1.3. Coleção `jogadores`
+Representa os participantes presentes em uma sala e o estado de presença.
+
+| Campo | Tipo | Obrigatório | Descrição / Valores Permitidos |
+| :--- | :--- | :---: | :--- |
+| `id` | `TEXT` (15 chars) | Sim | Identificador interno no PocketBase. |
+| `sala_codigo` | `TEXT` | Sim | Código da sala à qual o jogador pertence. |
 | `player_id` | `TEXT` | Sim | UUID gerado pelo navegador cliente e salvo em `sessionStorage`. |
-| `nome` | `TEXT` | Sim | Nome de exibição do jogador (ex.: `"Jogador #1042"`). |
-| `equipe` | `SELECT` | Sim | Equipe do jogador: `'A'`, `'B'` ou `'ESPECTADOR'`. |
+| `nome` | `TEXT` | Sim | Nome de exibição do jogador (ex.: `"Jogador 1042"`). |
+| `equipe` | `SELECT` | Sim | Equipe vinculada: `'A'`, `'B'` ou `'ESPECTADOR'`. |
 | `papel` | `SELECT` | Sim | Papel no turno: `'CODIFICADOR'`, `'PALPITEIRO'` ou `'ESPECTADOR'`. |
 | `last_seen` | `DATE` | Sim | Timestamp UTC atualizado via heartbeat para detecção de presença. |
+| `created` | `AUTODATE` | Sim | Timestamp UTC de criação do registro. |
+| `updated` | `AUTODATE` | Sim | Timestamp UTC da última atualização. |
 
 #### Regras de Acesso da Coleção `jogadores`:
-- **List / View:** `""` (público)
-- **Create:** `""` (público)
-- **Update:** `""` (público, restrito a atualizar seu próprio `last_seen` ou dados locais)
-- **Delete:** `""` (permite saída voluntária da sala)
+1. **List / View:** `""` (público)
+2. **Create:** `""` (público)
+3. **Update:** `""` (público, restrito a atualizar seu próprio `last_seen` ou dados locais)
+4. **Delete:** `""` (permite saída voluntária da sala)
 
 ---
 
 ## 2. Protocolo de Sincronização em Tempo Real (SSE)
 
-O cliente web conecta-se usando a biblioteca JavaScript oficial do PocketBase (`pocketbase.es.mjs`):
+O cliente web conecta-se usando o SDK oficial do PocketBase:
 
 ```javascript
 import PocketBase from 'pocketbase';
 
 const pb = new PocketBase(SERVER_PUBLIC_URL);
 
-// Assinatura de mudanças na sala em tempo real
-pb.collection('salas').subscribe(recordId, (e) => {
+// 1. Assinatura da Sala (Ciclo Macro e Placar)
+pb.collection('salas').subscribe(salaRecordId, (e) => {
     if (e.action === 'update') {
-        const salaAtualizada = e.record;
-        // Sincroniza a máquina de estados no p5.js
-        gameEngine.syncFromBackend(salaAtualizada);
+        gameEngine.syncSala(e.record);
     }
 });
 
-// Assinatura da lista de jogadores da sala
+// 2. Assinatura da Rodada Ativa (Tubo, Dica, Palpite e Revelação)
+pb.collection('rodadas').subscribe('*', (e) => {
+    if (e.record.sala_codigo === currentRoomCode) {
+        gameEngine.syncRodada(e.action, e.record);
+    }
+});
+
+// 3. Assinatura de Presença dos Jogadores
 pb.collection('jogadores').subscribe('*', (e) => {
     if (e.record.sala_codigo === currentRoomCode) {
-        // Atualiza contagem de presença e listas de equipe
-        updateLobbyPresence(e.action, e.record);
+        lobbyEngine.syncJogadores(e.action, e.record);
     }
 });
 ```
@@ -92,21 +123,21 @@ pb.collection('jogadores').subscribe('*', (e) => {
        last_seen: new Date().toISOString()
    });
    ```
-2. Um jogador sem atualização de `last_seen` há mais de **30 segundos** é considerado desconectado na interface do p5.js.
+2. Um jogador sem atualização de `last_seen` há mais de **30 segundos** é considerado desconectado na interface do jogo.
 
 ---
 
 ## 4. Regra de Pontuação por Proximidade
 
-Quando a fase transita para `REVELACAO`, a pontuação da rodada é calculada estritamente com base na diferença absoluta:
+Quando a fase da rodada transita para `REVELADA`, o backend calcula a distância absoluta:
 
 $$\Delta = |\text{meta\_oculta} - \text{palpite}|$$
 
 $$\text{pontos} = \begin{cases} 
-4, & \text{se } \Delta \le 2\% \quad \text{(Na mosca!)} \\
+4, & \text{se } \Delta \le 2\% \quad \text{(Na mosca)} \\
 3, & \text{se } 3\% \le \Delta \le 6\% \quad \text{(Muito perto)} \\
 2, & \text{se } 7\% \le \Delta \le 12\% \quad \text{(Perto)} \\
 0, & \text{se } \Delta > 12\% \quad \text{(Fora da margem)}
 \end{cases}$$
 
-Os pontos calculados são somados ao placar da equipe ativa (`placar_a` ou `placar_b`). Se o placar atingir a pontuação limite ($\ge 10$), a sala transita para `FIM_JOGO`.
+O hook em `game_rules.pb.js` grava o campo `pontos` no registro de `rodadas` e incrementa automaticamente o placar da equipe ativa (`placar_a` ou `placar_b`) na coleção `salas`. Caso a pontuação acumulada atinja o limite estipulado ($\ge 10$ pontos), a sala é automaticamente declarada com o vencedor e avança para `FIM_JOGO`.
