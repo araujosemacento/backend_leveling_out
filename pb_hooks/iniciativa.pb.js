@@ -41,6 +41,22 @@ routerAdd("POST", "/api/ppt/lance", (e) => {
     // Se apenas 1 jogador enviou o lance
     if (playerIds.length < 2) {
         $app.store().set(storeKey, JSON.stringify(rodadaData));
+
+        // Dispara SSE na coleção salas para notificar o oponente de forma instantânea
+        try {
+            const salas = $app.findRecordsByFilter(
+                "salas",
+                "codigo = {:codigo}",
+                "-created",
+                1,
+                0,
+                { codigo: salaCodigo }
+            );
+            if (salas && salas.length > 0) {
+                $app.save(salas[0]);
+            }
+        } catch (_) {}
+
         return e.json(200, {
             status: "AGUARDANDO_OPONENTE",
             rodada: rodada
@@ -124,7 +140,7 @@ routerAdd("GET", "/api/ppt/status", (e) => {
 
     const storeKey = "ppt_" + salaCodigo + "_" + rodada;
     if (!$app.store().has(storeKey)) {
-        return e.json(200, { status: "AGUARDANDO_LANCES", rodada: rodada });
+        return e.json(200, { status: "AGUARDANDO_LANCES", rodada: rodada, equipes_enviadas: [] });
     }
 
     try {
@@ -135,12 +151,17 @@ routerAdd("GET", "/api/ppt/status", (e) => {
             return e.json(200, rodadaData.resultado);
         }
 
+        const lancesObj = (rodadaData && rodadaData.lances) ? rodadaData.lances : {};
+        const pids = Object.keys(lancesObj);
+        const equipesEnviadas = pids.map(pid => lancesObj[pid].equipe);
+
         return e.json(200, {
             status: "AGUARDANDO_OPONENTE",
             rodada: rodada,
-            jogadores_enviados: rodadaData && rodadaData.lances ? Object.keys(rodadaData.lances).length : 0
+            jogadores_enviados: pids.length,
+            equipes_enviadas: equipesEnviadas
         });
     } catch (_) {
-        return e.json(200, { status: "AGUARDANDO_OPONENTE", rodada: rodada });
+        return e.json(200, { status: "AGUARDANDO_OPONENTE", rodada: rodada, equipes_enviadas: [] });
     }
 });
