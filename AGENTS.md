@@ -1,17 +1,18 @@
 # AGENTS.md: Diretrizes para Agentes Autônomos (Backend: Leveling Out)
 
-Este documento é a fonte primária de verdade e instrução para qualquer desenvolvedor ou agente autônomo de inteligência artificial que opere neste repositório. Ele descreve o propósito do jogo **Leveling Out**, o fluxo de seu *game loop*, a arquitetura técnica adotada e os padrões estritos de desenvolvimento do backend.
+Este documento é a fonte primária de verdade e instrução para qualquer desenvolvedor ou agente autônomo de inteligência artificial que opere neste repositório. Ele descreve o propósito do jogo **Leveling Out**, o fluxo de seu _game loop_, a arquitetura técnica adotada e os padrões estritos de desenvolvimento do backend.
 
 ---
 
 ## 1. Visão Geral do Jogo: Leveling Out
 
-**Leveling Out** é um *party game* multiplayer cooperativo-competitivo focado em **dedução social, sintonia cultural e calibração conceitual**. Duas equipes competem tentando posicionar e adivinhar conceitos abstratos ao longo de uma escala contínua de 0% a 100%.
+**Leveling Out** é um _party game_ multiplayer cooperativo-competitivo focado em **dedução social, sintonia cultural e calibração conceitual**. Duas equipes competem tentando posicionar e adivinhar conceitos abstratos ao longo de uma escala contínua de 0% a 100%.
 
 ### Os 3 Pilares da Jogabilidade
+
 1. **Nível Oculto:** O preenchimento visual de um tubo de ensaio com volume percentual aleatório (0% a 100%), visível **apenas** para o Codificador sorteado da equipe da vez.
-2. **Gerar Pistas:** A partir de uma carta com um espectro bipolar (ex.: *"Famoso / Anônimo"*, *"Quente / Frio"*, *"Fácil / Difícil"*), o Codificador formula uma dica conceitual para orientar seu parceiro até o nível exato (ex.: meta de 70% em "Famoso/Anônimo" $\rightarrow$ pista: *"Keanu Reeves"*).
-3. **Acerto Aproximado:** O Palpiteiro da equipe desloca um marcador analógico (*slider*) até onde estima estar o líquido. A pontuação é conferida por faixas de proximidade:
+2. **Gerar Pistas:** A partir de uma carta com um espectro bipolar (ex.: _"Famoso / Anônimo"_, _"Quente / Frio"_, _"Fácil / Difícil"_), o Codificador formula uma dica conceitual para orientar seu parceiro até o nível exato (ex.: meta de 70% em "Famoso/Anônimo" $\rightarrow$ pista: _"Keanu Reeves"_).
+3. **Acerto Aproximado:** O Palpiteiro da equipe desloca um marcador analógico (_slider_) até onde estima estar o líquido. A pontuação é conferida por faixas de proximidade:
    - Margem de erro $\le 2\%$: **Na mosca (+4 pontos)**
    - Margem de erro $\le 6\%$: **Muito perto (+3 pontos)**
    - Margem de erro $\le 12\%$: **Perto (+2 pontos)**
@@ -22,9 +23,11 @@ Este documento é a fonte primária de verdade e instrução para qualquer desen
 ## 2. Game Loop Detalhado em 3 Fases
 
 ### Fase 1: Onboarding, Sala e Decisão de Turno
+
 Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Azul / A** e **Equipe Vermelha / B**). Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
 
 ### Fase 2: O Core Loop da Rodada (Dica, Palpite e Revelação)
+
 1. O backend cria um registro na coleção `rodadas` para a rodada ativa da sala e define os papéis da equipe da vez.
 2. É sorteada automaticamente uma `meta_oculta` (inteiro entre 5 e 95) armazenada no registro de `rodadas`.
 3. O Codificador formula e envia uma `dica` textual.
@@ -32,6 +35,7 @@ Os jogadores acessam a plataforma via navegador estático e entram em uma sala c
 5. Ocorre a **revelação simultânea**: o hook calcula a distância absoluta entre `meta_oculta` e `palpite`, computa os pontos conquistados na coleção `rodadas` e atualiza o placar macro da sala (`placar_a` ou `placar_b`).
 
 ### Fase 3: Progressão, Alternância e Conclusão com Revanche
+
 Os turnos alternam estritamente entre as equipes. A partida segue até que uma das equipes atinja a pontuação máxima estipulada (ex.: 10 pontos). Ao atingir a meta, a fase muda para `FIM_JOGO`, exibindo a tela de vitória com métricas de sintonia da partida baseadas no histórico de `rodadas`. A sala oferece opções para disparar uma **Revanche** (mantendo equipes e zerando o placar) ou retornar ao lobby.
 
 ---
@@ -40,7 +44,8 @@ Os turnos alternam estritamente entre as equipes. A partida segue até que uma d
 
 O backend é fundamentado no **PocketBase** (único binário executável em Go com SQLite embarcado) com suporte a extensões em JavaScript via runtime interno Goja (`pb_hooks/`).
 
-### Diretrizes Centrais Inegociáveis:
+### Diretrizes Centrais Inegociáveis
+
 1. **Consumo Mínimo de Recursos:**
    - O processo deve operar entre **15 MB e 30 MB de RAM**, permitindo execução contínua em máquinas modestas ou mini-PCs residenciais sem afetar outras tarefas do hospedeiro.
 2. **Anonimato e Ausência de Contas:**
@@ -85,7 +90,8 @@ backend/
 
 O PocketBase executa JavaScript através do motor **Goja** (compatível com ES5/ES6). Fique atento aos padrões suportados:
 
-### Regras de Sintaxe e Globais do Goja (PocketBase v0.23+ / v0.40+):
+### Regras de Sintaxe e Globais do Goja (PocketBase v0.23+ / v0.40+)
+
 - Use as funções globais e métodos do `$app`:
   - `onRecordUpdateRequest((e) => { ... return e.next(); }, collectionName)`
   - `onRecordCreateRequest((e) => { ... return e.next(); }, collectionName)`
@@ -103,16 +109,19 @@ O PocketBase executa JavaScript através do motor **Goja** (compatível com ES5/
 
 ## 6. Comandos e Testes de Validação
 
-### Testando a saúde da API:
+### Testando a saúde da API
+
 ```bash
 curl -I http://127.0.0.1:8090/api/health
 # Esperado: HTTP/1.1 200 OK
 ```
 
-### Consultando salas ativas:
+### Consultando salas ativas
+
 ```bash
 curl -X GET "http://127.0.0.1:8090/api/collections/salas/records"
 ```
 
-### Simulando a purga de higienização manualmente:
+### Simulando a purga de higienização manualmente
+
 Ao reiniciar o PocketBase ou aguardar o disparo do cron, acompanhe os logs no terminal para verificar as mensagens emitidas por `console.log("[CLEANUP] ...")`.

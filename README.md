@@ -19,17 +19,20 @@ Este diretório contém o servidor em tempo real e as regras de domínio para o 
 Você pode usar um dos scripts automatizados conforme seu sistema operacional:
 
 Para Linux ou macOS (Bash):
+
 ```bash
 chmod +x scripts/download_pocketbase.sh
 ./scripts/download_pocketbase.sh
 ```
 
 Para Windows (duplo clique no arquivo ou via CMD/PowerShell):
+
 ```cmd
 scripts\download_pocketbase.bat
 ```
 
 Para qualquer sistema operacional com Python 3:
+
 ```bash
 python3 scripts/download_pocketbase.py
 ```
@@ -84,7 +87,7 @@ A Cloudflare fornecerá uma URL temporária gratuita (ou atrelada a seu domínio
 
 Para manter o PocketBase rodando na sua máquina mesmo após fechar o terminal:
 
-### Via `systemd` (Linux):
+### Via `systemd` (Linux)
 
 Crie `/etc/systemd/system/pocketbase-levelingout.service`:
 
