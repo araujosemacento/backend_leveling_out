@@ -4,6 +4,9 @@ pb_data/
 # Local binary
 pocketbase
 pocketbase.exe
+leveling-out-server
+leveling-out-server.exe
+leveling-out-server-*
 *.zip
 
 # Python cache

@@ -7,56 +7,55 @@ Este diretório contém o servidor em tempo real e as regras de domínio para o 
 ## 1. Princípios de Design
 
 - **Efêmero por Definição:** Nenhuma informação persiste além do ciclo de vida da sala ativa. Usuários são anônimos (sem contas, senhas ou e-mails).
-- **Higienização Automática:** Um hook cron interno (`pb_hooks/cleanup.pb.js`) purga automaticamente salas e registros sem atividade após 15 minutos, impedindo acúmulo de dados no disco.
+- **Higienização Automática:** O componente nativo autoritativo `CleanupComponent` purga periodicamente salas e registros sem atividade após 15 minutos via cron interno, impedindo acúmulo de dados no disco.
 - **Exposição Segura via Túnel Reverso:** O backend roda localmente e é exposto com terminação TLS automática via **Tailscale Funnel** ou **Cloudflare Tunnel**.
 
 ---
 
 ## 2. Início Rápido
 
-### Passo 1: Baixar o PocketBase
+### Opção A: Executar a partir dos Binários Oficiais (GitHub Releases)
 
-Você pode usar um dos scripts automatizados conforme seu sistema operacional:
+Baixe o executável pré-compilado para seu sistema operacional (Linux, macOS ou Windows) na aba de [Releases do Repositório](https://github.com/araujosemacento/backend_leveling_out/releases).
 
-Para Linux ou macOS (Bash):
-
-```bash
-chmod +x scripts/download_pocketbase.sh
-./scripts/download_pocketbase.sh
-```
-
-Para Windows (duplo clique no arquivo ou via CMD/PowerShell):
-
-```cmd
-scripts\download_pocketbase.bat
-```
-
-Para qualquer sistema operacional com Python 3:
+Descompacte e execute:
 
 ```bash
-python3 scripts/download_pocketbase.py
+# No Linux ou macOS:
+./leveling-out-server serve --http="127.0.0.1:8090"
+
+# No Windows:
+leveling-out-server.exe serve --http="127.0.0.1:8090"
 ```
 
-Ou acesse as [Releases oficiais do PocketBase](https://github.com/pocketbase/pocketbase/releases) e descompacte o executável `pocketbase` nesta pasta.
+### Opção B: Compilar a partir do Código Fonte em Go
 
-### Passo 2: Executar o Servidor
+Com o Go 1.24+ instalado:
 
 ```bash
-./pocketbase serve --http="127.0.0.1:8090"
+# Executar a suíte de testes unitários do backend
+go test -v ./internal/components/...
+
+# Compilar o binário autossuficiente
+go build -o leveling-out-server ./cmd/server
+
+# Iniciar o servidor
+./leveling-out-server serve --http="127.0.0.1:8090"
 ```
+
+O esquema de banco de dados (`pb_schema.json`) é embarcado diretamente no executável via `//go:embed` e inicializado automaticamente na primeira execução, sem necessidade de configuração manual.
 
 O servidor inicializará e exibirá as URLs:
 
 - **API REST / SSE:** `http://127.0.0.1:8090/api/`
 - **Painel Administrativo:** `http://127.0.0.1:8090/_/`
 
-### Passo 3: Importar o Esquema de Coleções
+### Acesso ao Painel Administrativo
 
 Ao abrir o painel administrativo (`http://127.0.0.1:8090/_/`) pela primeira vez:
 
-1. Crie sua conta de administrador local (usada apenas para gerenciar o painel);
-2. Vá em **Settings** (ícone de engrenagem) > **Sync** > **Import collections**;
-3. Carregue o arquivo [pb_schema.json](./pb_schema.json) para criar automaticamente as coleções `salas` e `jogadores` com todas as regras de acesso e índices pré-configurados.
+1. Crie sua conta de administrador local (usada exclusivamente para inspecionar registros e conexões);
+2. As coleções `salas`, `rodadas` e `jogadores` já estarão criadas e configuradas automaticamente pelo auto-bootstrap nativo do servidor.
 
 ---
 

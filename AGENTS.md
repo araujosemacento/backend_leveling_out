@@ -42,101 +42,99 @@ Os turnos alternam estritamente entre as equipes. A partida segue até que uma d
 
 ## 3. Arquitetura do Backend e Filosofia de Design
 
-O backend é fundamentado no **PocketBase** (único binário executável em Go com SQLite embarcado) com suporte a extensões em JavaScript via runtime interno Goja (`pb_hooks/`).
+O backend e fundamentado no **PocketBase** estendido diretamente como framework em Go (`github.com/pocketbase/pocketbase`), gerando um unico binario executavel nativo com SQLite embutido via `modernc.org/sqlite` (`CGO_ENABLED=0`).
 
 ### Diretrizes Centrais Inegociáveis
 
-1. **Consumo Mínimo de Recursos:**
-   - O processo deve operar entre **15 MB e 30 MB de RAM**, permitindo execução contínua em máquinas modestas ou mini-PCs residenciais sem afetar outras tarefas do hospedeiro.
-2. **Anonimato e Ausência de Contas:**
-   - **NÃO** crie tabelas de usuários permanentes, sistemas de e-mail/senha ou OAuth.
-   - Cada jogador é identificado apenas por um `player_id` (UUID efêmero gerado pelo cliente e armazenado no `sessionStorage`).
-3. **Efemeridade e Zero Bloat (Higienização Automática):**
-   - O banco de dados SQLite **não retém histórico de partidas passadas**.
-   - O hook `pb_hooks/cleanup.pb.js` é executado a cada 5 minutos via agendador cron (`cronAdd`). Qualquer sala inativa há mais de **15 minutos** é purgada em cascata, deletando a sala, seus jogadores e o histórico de rodadas.
+1. **Consumo Minimo de Recursos:**
+   - O processo deve operar entre **15 MB e 30 MB de RAM**, permitindo execucao continua em servidores modestos ou maquinas de desenvolvimento sem sobrecarga de heap.
+2. **Anonimato e Ausencia de Contas:**
+   - **NAO** crie tabelas de usuarios permanentes, senhas ou sistemas de OAuth.
+   - Cada participante e identificado exclusivamente por um `player_id` (UUID efemero mantido no cliente).
+3. **Efemeridade e Higienizacao Automatica:**
+   - O banco SQLite nao retem partidas passadas.
+   - O `CleanupComponent` e executado periodicamente a cada 5 minutos via agendador nativo do PocketBase, purgando jogadores inativos ha mais de 1 minuto e salas inativas ha mais de 5 minutos.
 4. **Comunicação em Tempo Real Desacoplada:**
-   - O front-end conecta-se exclusivamente via **Server-Sent Events (SSE)** nativo do PocketBase, escutando `salas` para o status global, `rodadas` para a jogada corrente e `jogadores` para presença.
-   - O tráfego de saída do servidor deve ser mínimo e eficiente.
-5. **Conectividade Externa via Túnel Reverso:**
-   - O servidor escuta em `127.0.0.1:8090` e é exposto publicamente por **Tailscale Funnel** ou **Cloudflare Tunnel**, fornecendo terminação TLS (HTTPS/WSS) transparente mesmo sob redes móveis e CGNAT.
-6. **Adequação à Arquitetura de Entidades e Componentes:**
-   - O backend atua como o árbitro autoritativo do jogo. Suas coleções e regras refletem rigorosamente a matriz de composição do projeto:
-     - `EntidadeSessao` (`salas` e `rodadas`): agregador de estado governado por `CicloFasesComponent` e `ReconciliacaoRedeComponent`.
-     - `EntidadeParticipante` (`jogadores` e equipes): agregador de agentes com `IdentidadeComponent`, `PresencaRedeComponent` e `AcumuladorPontosComponent`.
-     - `EntidadeDisputa` (`iniciativas` e aferição): arbitração autoritária via `ArbitroPptComponent` e `RegraProximidadeComponent`.
-     - `EntidadeArtefato` (segredos): proteção Zero Trust da meta via `SigiloMetaComponent`.
-
-### 3.1. Evolução Arquitetural: Portabilidade para Go Puro
-
-Atualmente, o servidor opera com hooks em JavaScript (`pb_hooks/`) sobre o interpretador Goja. O roadmap prevê a portabilidade das regras de negócio diretamente para **Go nativo**, estendendo o PocketBase como framework (`pocketbase/pocketbase`):
-
-- **Tipagem Estática:** Estruturas fortemente tipadas eliminam riscos de quebra de contrato em runtime.
-- **Concorrência Atômica:** Arbitragem de confrontos simultâneos (PPT e palpites) utilizando `sync.RWMutex`, `sync.Map` e canais nativos, substituindo o mapa genérico `$app.store()`.
-- **Performance e Recursos:** Eliminação do overhead de memória da pool de máquinas virtuais JavaScript do Goja e latências de sub-milissegundos para cálculo de proximidade.
-- **Transmissão Bidirecional:** Habilitação futura de rotas WebSocket nativas de duplex completo para streaming contínuo do slider analógico.
+   - O front-end conecta-se via **Server-Sent Events (SSE)** nativo do PocketBase, escutando `salas`, `rodadas` e `jogadores`.
+5. **Conectividade Externa via Tunel Reverso:**
+   - O servidor escuta em `127.0.0.1:8090` e e exposto publicamente por **Tailscale Funnel** ou **Cloudflare Tunnel**, fornecendo terminacao TLS automatica.
+6. **Composicao por Entidades e Componentes Atomicos:**
+   - O backend e o arbitro autoritativo do sistema distribuido:
+     - `EntidadeSessao` (`internal/entities/session.go`): salas e rodadas ativas.
+     - `EntidadeParticipante` (`internal/entities/participant.go`): jogadores e equipes Corvo e Aguia.
+     - `EntidadeDisputa` (`internal/entities/contest.go`): lances e resolucoes de confrontos.
+     - `ProximityComponent` (`internal/components/proximity.go`): algoritmo matematico de pontuacao por tolerancia.
+     - `SecretTargetComponent` (`internal/components/secret_target.go`): segredo seguro [5, 95] com `crypto/rand`.
+     - `PptArbiterComponent` (`internal/components/ppt_arbiter.go`): arbitragem concorrente thread-safe (`sync.RWMutex`).
+     - `CleanupComponent` (`internal/components/cleanup.go`): purga automatizada em segundo plano.
 
 ---
 
-## 4. Estrutura do Repositório e Papéis dos Arquivos
+## 4. Estrutura do Repositorio e Papeis dos Arquivos
 
 ```text
 backend/
-├── AGENTS.md                                 <-- Este documento (regras e contexto para IA)
-├── README.md                                 <-- Instruções de operação humana e infraestrutura
-├── CONTRACT.md                               <-- Especificação formal de API REST, campos e SSE
-├── pb_schema.json                            <-- Esquema de dados exportado para importação rápida
-├── pb_migrations/                            <-- Migrações declarativas automatizadas em JS
-│   └── 1790281200_create_game_collections.js <-- Criação de salas, rodadas e jogadores
-├── pb_hooks/                                 <-- Lógica em JavaScript do runtime Goja do PocketBase
-│   ├── cleanup.pb.js                         <-- Cron para purga de dados inativos (> 15 min) em cascata
-│   └── game_rules.pb.js                      <-- Validações de integridade, cálculo de pontos e sincronização
-├── scripts/                                  <-- Scripts utilitários de conveniência
-│   ├── download_pocketbase.sh                <-- Baixa binário oficial do PocketBase (Bash)
-│   ├── download_pocketbase.bat               <-- Baixa binário oficial do PocketBase (Windows)
-│   ├── download_pocketbase.py                <-- Baixa binário oficial do PocketBase (Python)
-│   └── start_tunnel.sh                       <-- Exemplos de ativação de túnel (Tailscale/Cloudflare)
-├── .env.example                              <-- Exemplo de configuração de ambiente
-└── .gitignore                                <-- Bloqueio de pb_data/ e binários locais
+├── cmd/
+│   └── server/main.go               <-- Ponto de entrada do executavel PocketBase estendido
+├── internal/
+│   ├── entities/                    <-- EntidadeSessao, EntidadeParticipante e EntidadeDisputa
+│   ├── components/                  <-- ProximityComponent, SecretTargetComponent, PptArbiter, Cleanup
+│   │   └── components_test.go       <-- Testes unitarios Go com detector de condicoes de corrida
+│   ├── hooks/                       <-- Registro de hooks autoritativos e rotas dedicadas
+│   └── schema/                      <-- Auto-bootstrap de colecoes via pb_schema.json embarcado
+├── scripts/
+│   └── start_tunnel.sh              <-- Script utilitario de tunel reverso (Tailscale / Cloudflare)
+├── .github/workflows/
+│   └── release.yml                  <-- Pipeline de compilacao cruzada e releases no GitHub
+├── CHANGELOG.md                     <-- Registro formal de versoes (Keep a Changelog)
+├── CONTRACT.md                      <-- Especificacao de contratos REST, rotas e payloads
+├── README.md                        <-- Instrucoes de compilacao, execucao e operacao
+├── AGENTS.md                        <-- Este documento (fonte de verdade para agentes de IA)
+├── pb_schema.json                   <-- Esquema declarativo de colecoes e regras
+├── go.mod / go.sum                  <-- Modulos e dependencias de compilacao Go
+├── .env.example                     <-- Modelo de variaveis de ambiente
+└── .gitignore                       <-- Bloqueio de artefatos de build e banco local
 ```
 
 ---
 
-## 5. Convenções para Escrever Hooks no PocketBase (`pb_hooks/`)
+## 5. Padroes de Desenvolvimento em Go Nativo
 
-O PocketBase executa JavaScript através do motor **Goja** (compatível com ES5/ES6). Fique atento aos padrões suportados:
-
-### Regras de Sintaxe e Globais do Goja (PocketBase v0.23+ / v0.40+)
-
-- Use as funções globais e métodos do `$app`:
-  - `onRecordUpdateRequest((e) => { ... return e.next(); }, collectionName)`
-  - `onRecordCreateRequest((e) => { ... return e.next(); }, collectionName)`
-  - `cronAdd(tag, cronExpression, callback)`
-  - `$app.findRecordsByFilter(collection, filter, sort, limit, offset, params)`
-  - `$app.findRecordById(collection, id)`
-  - `$app.delete(record)`
-  - `$app.save(record)`
-- Em todos os hooks de requisição (`*Request`), é obrigatório finalizar retornando `return e.next();` para que a requisição prossiga.
-- **Autocontenção de callbacks:** Devido ao pool de instâncias concorrentes do Goja no PocketBase, declare funções auxiliares e regras diretamente no escopo de cada callback de hook para garantir que estejam disponíveis no contexto da requisição.
-- **Não** utilize módulos Node.js (`require('fs')`, `npm`, `process.env`). Apenas funções nativas e APIs fornecidas pelo PocketBase (`$os`, `$http`, `$app`, etc.).
-- Sempre valide tipos e garanta tratamento de erros com `try / catch` para evitar interrupção do serviço.
+- **Zero CGO:** Toda compilacao deve manter `CGO_ENABLED=0`, garantindo portabilidade estatica absoluta entre Linux, macOS e Windows.
+- **Concorrencia Segura:** Nunca compartilhe estado mutavel entre requisicoes sem sincronizacao nativa (`sync.RWMutex`, `sync.Map` ou canais).
+- **Zero-Copy Pass-Through (SQL-Generated JSON):** Para consultas agregadas de alta performance (`/api/leveling/salas/{codigo}/snapshot`), utilize `json_object` e `json_group_array` diretamente no SQLite, repassando os bytes ao socket HTTP sem instanciar structs intermediarias ou invocar reflexao dinamica.
+- **Auto-Bootstrap:** Colecoes essenciais devem ser garantidas no evento `OnBootstrap` a partir de `pb_schema.json` embarcado via `//go:embed`.
 
 ---
 
-## 6. Comandos e Testes de Validação
+## 6. Comandos e Testes de Validacao
 
-### Testando a saúde da API
+### Executar a suite de testes unitarios com verificacao de corrida
+
+```bash
+go test -v -race ./internal/components/...
+```
+
+### Compilar o executavel do servidor localmente
+
+```bash
+go build -o leveling-out-server ./cmd/server
+```
+
+### Iniciar o servidor
+
+```bash
+./leveling-out-server serve --http="127.0.0.1:8090"
+```
+
+### Testando a saude da API
 
 ```bash
 curl -I http://127.0.0.1:8090/api/health
-# Esperado: HTTP/1.1 200 OK
 ```
 
-### Consultando salas ativas
+### Snapshot de alto desempenho via SQL-Generated JSON
 
 ```bash
-curl -X GET "http://127.0.0.1:8090/api/collections/salas/records"
+curl -X GET "http://127.0.0.1:8090/api/leveling/salas/SALA_EXEMPLO/snapshot"
 ```
-
-### Simulando a purga de higienização manualmente
-
-Ao reiniciar o PocketBase ou aguardar o disparo do cron, acompanhe os logs no terminal para verificar as mensagens emitidas por `console.log("[CLEANUP] ...")`.

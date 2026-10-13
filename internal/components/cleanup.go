@@ -1,0 +1,111 @@
+package components
+
+import (
+	"log"
+	"time"
+
+	"github.com/pocketbase/dbx"
+	"github.com/pocketbase/pocketbase/core"
+)
+
+// CleanupComponent encapsula as rotinas de expurgo automático de recursos inativos
+type CleanupComponent struct{}
+
+// NewCleanupComponent inicializa o componente de higienização
+func NewCleanupComponent() *CleanupComponent {
+	return &CleanupComponent{}
+}
+
+// PurgeInactivePlayers remove registros de jogadores sem ping recente (last_seen > minutos)
+func (c *CleanupComponent) PurgeInactivePlayers(app core.App, minutes int) {
+	threshold := time.Now().UTC().Add(-time.Duration(minutes) * time.Minute).Format("2006-01-02 15:04:05.000Z")
+
+	players, err := app.FindRecordsByFilter(
+		"jogadores",
+		"last_seen < {:threshold}",
+		"-last_seen",
+		0,
+		0,
+		dbx.Params{"threshold": threshold},
+	)
+	if err != nil {
+		log.Printf("[CLEANUP ERROR] Falha ao consultar jogadores inativos: %v", err)
+		return
+	}
+
+	if len(players) > 0 {
+		log.Printf("[CLEANUP] Detectados %d jogador(es) inativo(s). Purgando...", len(players))
+		for _, p := range players {
+			if err := app.Delete(p); err != nil {
+				log.Printf("[CLEANUP ERROR] Erro ao deletar jogador '%s': %v", p.Id, err)
+			}
+		}
+		log.Printf("[CLEANUP] %d jogador(es) purgado(s) com sucesso.", len(players))
+	}
+}
+
+// PurgeInactiveRooms remove em cascata salas sem jogadores ativos recentes (last_seen > minutos)
+func (c *CleanupComponent) PurgeInactiveRooms(app core.App, minutes int) {
+	threshold := time.Now().UTC().Add(-time.Duration(minutes) * time.Minute).Format("2006-01-02 15:04:05.000Z")
+
+	var staleRoomCodes []string
+	err := app.DB().NewQuery(`
+		SELECT codigo FROM salas
+		WHERE codigo NOT IN (
+			SELECT DISTINCT sala_codigo FROM jogadores WHERE last_seen >= {:threshold}
+		)
+	`).Bind(dbx.Params{"threshold": threshold}).Column(&staleRoomCodes)
+
+	if err != nil {
+		log.Printf("[CLEANUP ERROR] Falha ao consultar salas inativas: %v", err)
+		return
+	}
+
+	if len(staleRoomCodes) > 0 {
+		log.Printf("[CLEANUP] Iniciando higienização: %d sala(s) inativa(s) detectada(s).", len(staleRoomCodes))
+
+		for _, codigo := range staleRoomCodes {
+			room, rErr := app.FindFirstRecordByFilter("salas", "codigo = {:codigo}", dbx.Params{"codigo": codigo})
+			if rErr == nil && room != nil {
+				salaCodigo := room.GetString("codigo")
+
+				// Remove jogadores vinculados
+				players, pErr := app.FindRecordsByFilter(
+					"jogadores",
+					"sala_codigo = {:codigo}",
+					"",
+					0,
+					0,
+					dbx.Params{"codigo": salaCodigo},
+				)
+				if pErr == nil {
+					for _, p := range players {
+						_ = app.Delete(p)
+					}
+				}
+
+				// Remove rodadas vinculadas
+				rounds, rErr := app.FindRecordsByFilter(
+					"rodadas",
+					"sala_codigo = {:codigo}",
+					"",
+					0,
+					0,
+					dbx.Params{"codigo": salaCodigo},
+				)
+				if rErr == nil {
+					for _, r := range rounds {
+						_ = app.Delete(r)
+					}
+				}
+
+				// Remove o registro principal da sala
+				if err := app.Delete(room); err == nil {
+					log.Printf("[CLEANUP] Sala '%s', participantes e histórico de rodadas purgados.", salaCodigo)
+				}
+			}
+		}
+
+		log.Println("[CLEANUP] Higienização de salas concluída com sucesso. Espaço liberado.")
+	}
+}

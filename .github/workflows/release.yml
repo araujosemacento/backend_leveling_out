@@ -1,0 +1,187 @@
+name: Release Backend Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag de versao para o release (ex: v0.2.0)'
+        required: false
+        default: 'v0.2.0'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Testes Unitarios Go
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          check-latest: true
+
+      - name: Executar Testes de Dominio e Componentes
+        run: |
+          go test -v -race ./internal/components/...
+
+  build:
+    name: Compilacao Cruzada e Empacotamento
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            artifact_name: leveling-out-server_linux_amd64
+            binary_name: leveling-out-server
+          - goos: linux
+            goarch: arm64
+            artifact_name: leveling-out-server_linux_arm64
+            binary_name: leveling-out-server
+          - goos: darwin
+            goarch: amd64
+            artifact_name: leveling-out-server_darwin_amd64
+            binary_name: leveling-out-server
+          - goos: darwin
+            goarch: arm64
+            artifact_name: leveling-out-server_darwin_arm64
+            binary_name: leveling-out-server
+          - goos: windows
+            goarch: amd64
+            artifact_name: leveling-out-server_windows_amd64
+            binary_name: leveling-out-server.exe
+    steps:
+      - name: Checkout do Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          check-latest: true
+
+      - name: Compilar Binario Nativo
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -ldflags="-s -w" -o dist/${{ matrix.binary_name }} ./cmd/server
+
+      - name: Empacotar Artefatos
+        run: |
+          mkdir -p release
+          cd dist
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip -9 ../release/${{ matrix.artifact_name }}.zip ${{ matrix.binary_name }}
+          else
+            tar -czf ../release/${{ matrix.artifact_name }}.tar.gz ${{ matrix.binary_name }}
+          fi
+          cd ..
+          cd release
+          sha256sum * > ../release/${{ matrix.artifact_name }}.sha256
+          cd ..
+
+      - name: Upload de Artefato Temporario
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            release/*.tar.gz
+            release/*.zip
+            release/*.sha256
+
+  publish:
+    name: Publicar GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download de Todos os Binarios Compilados
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-release
+          merge-multiple: true
+
+      - name: Gerar Checksum Consolidado
+        run: |
+          cd dist-release
+          sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Determinar Tag do Release
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extrair Proceduralmente Notas do CHANGELOG.md
+        id: extract_notes
+        run: |
+          TAG="${{ steps.get_tag.outputs.tag }}"
+          CLEAN_TAG="${TAG#v}"
+          
+          echo "Processando notas para a tag: $TAG (sem v: $CLEAN_TAG)"
+          
+          # Script awk procedural para extrair a secao correspondente a tag
+          awk -v tag="$CLEAN_TAG" '
+            BEGIN {
+              found = 0;
+            }
+            /^## \[(v)?[0-9]/ {
+              if (found) {
+                exit;
+              }
+              if ($0 ~ "## \\[(v)?" tag "\\]") {
+                found = 1;
+                next;
+              }
+            }
+            found {
+              print;
+            }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+
+          # Caso a secao nao tenha sido encontrada no CHANGELOG.md, gera fallback com commits
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Aviso: Secao para $TAG nao localizada no CHANGELOG.md. Gerando fallback a partir do historico git."
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+            echo "### Alteracoes Recentes" > RELEASE_NOTES.md
+            if [ -n "$PREV_TAG" ]; then
+              git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" >> RELEASE_NOTES.md
+            else
+              git log -n 10 --pretty=format:"- %s (%h)" >> RELEASE_NOTES.md
+            fi
+          fi
+
+          echo "--- Conteudo extraido para a release ---"
+          cat RELEASE_NOTES.md
+
+      - name: Publicar Release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
+          name: "Leveling Out Backend: ${{ steps.get_tag.outputs.tag }}"
+          draft: false
+          prerelease: false
+          body_path: RELEASE_NOTES.md
+          files: |
+            dist-release/*.tar.gz
+            dist-release/*.zip
+            dist-release/SHA256SUMS.txt
