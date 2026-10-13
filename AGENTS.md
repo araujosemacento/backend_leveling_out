@@ -59,6 +59,21 @@ O backend é fundamentado no **PocketBase** (único binário executável em Go c
    - O tráfego de saída do servidor deve ser mínimo e eficiente.
 5. **Conectividade Externa via Túnel Reverso:**
    - O servidor escuta em `127.0.0.1:8090` e é exposto publicamente por **Tailscale Funnel** ou **Cloudflare Tunnel**, fornecendo terminação TLS (HTTPS/WSS) transparente mesmo sob redes móveis e CGNAT.
+6. **Adequação à Arquitetura de Entidades e Componentes:**
+   - O backend atua como o árbitro autoritativo do jogo. Suas coleções e regras refletem rigorosamente a matriz de composição do projeto:
+     - `EntidadeSessao` (`salas` e `rodadas`): agregador de estado governado por `CicloFasesComponent` e `ReconciliacaoRedeComponent`.
+     - `EntidadeParticipante` (`jogadores` e equipes): agregador de agentes com `IdentidadeComponent`, `PresencaRedeComponent` e `AcumuladorPontosComponent`.
+     - `EntidadeDisputa` (`iniciativas` e aferição): arbitração autoritária via `ArbitroPptComponent` e `RegraProximidadeComponent`.
+     - `EntidadeArtefato` (segredos): proteção Zero Trust da meta via `SigiloMetaComponent`.
+
+### 3.1. Evolução Arquitetural: Portabilidade para Go Puro
+
+Atualmente, o servidor opera com hooks em JavaScript (`pb_hooks/`) sobre o interpretador Goja. O roadmap prevê a portabilidade das regras de negócio diretamente para **Go nativo**, estendendo o PocketBase como framework (`pocketbase/pocketbase`):
+
+- **Tipagem Estática:** Estruturas fortemente tipadas eliminam riscos de quebra de contrato em runtime.
+- **Concorrência Atômica:** Arbitragem de confrontos simultâneos (PPT e palpites) utilizando `sync.RWMutex`, `sync.Map` e canais nativos, substituindo o mapa genérico `$app.store()`.
+- **Performance e Recursos:** Eliminação do overhead de memória da pool de máquinas virtuais JavaScript do Goja e latências de sub-milissegundos para cálculo de proximidade.
+- **Transmissão Bidirecional:** Habilitação futura de rotas WebSocket nativas de duplex completo para streaming contínuo do slider analógico.
 
 ---
 
@@ -66,22 +81,22 @@ O backend é fundamentado no **PocketBase** (único binário executável em Go c
 
 ```text
 backend/
-├── AGENTS.md                  <-- Este documento (regras e contexto para IA)
-├── README.md                  <-- Instruções de operação humana e infraestrutura
-├── CONTRACT.md                <-- Especificação formal de API REST, campos e SSE
-├── pb_schema.json             <-- Esquema de dados exportado para importação rápida
-├── pb_migrations/             <-- Migrações declarativas automatizadas em JS
+├── AGENTS.md                                 <-- Este documento (regras e contexto para IA)
+├── README.md                                 <-- Instruções de operação humana e infraestrutura
+├── CONTRACT.md                               <-- Especificação formal de API REST, campos e SSE
+├── pb_schema.json                            <-- Esquema de dados exportado para importação rápida
+├── pb_migrations/                            <-- Migrações declarativas automatizadas em JS
 │   └── 1790281200_create_game_collections.js <-- Criação de salas, rodadas e jogadores
-├── pb_hooks/                  <-- Lógica em JavaScript do runtime Goja do PocketBase
-│   ├── cleanup.pb.js          <-- Cron para purga de dados inativos (> 15 min) em cascata
-│   └── game_rules.pb.js       <-- Validações de integridade, cálculo de pontos e sincronização
-├── scripts/                   <-- Scripts utilitários de conveniência
-│   ├── download_pocketbase.sh <-- Baixa binário oficial do PocketBase (Bash)
-│   ├── download_pocketbase.bat <-- Baixa binário oficial do PocketBase (Windows)
-│   ├── download_pocketbase.py <-- Baixa binário oficial do PocketBase (Python)
-│   └── start_tunnel.sh        <-- Exemplos de ativação de túnel (Tailscale/Cloudflare)
-├── .env.example               <-- Exemplo de configuração de ambiente
-└── .gitignore                 <-- Bloqueio de pb_data/ e binários locais
+├── pb_hooks/                                 <-- Lógica em JavaScript do runtime Goja do PocketBase
+│   ├── cleanup.pb.js                         <-- Cron para purga de dados inativos (> 15 min) em cascata
+│   └── game_rules.pb.js                      <-- Validações de integridade, cálculo de pontos e sincronização
+├── scripts/                                  <-- Scripts utilitários de conveniência
+│   ├── download_pocketbase.sh                <-- Baixa binário oficial do PocketBase (Bash)
+│   ├── download_pocketbase.bat               <-- Baixa binário oficial do PocketBase (Windows)
+│   ├── download_pocketbase.py                <-- Baixa binário oficial do PocketBase (Python)
+│   └── start_tunnel.sh                       <-- Exemplos de ativação de túnel (Tailscale/Cloudflare)
+├── .env.example                              <-- Exemplo de configuração de ambiente
+└── .gitignore                                <-- Bloqueio de pb_data/ e binários locais
 ```
 
 ---
