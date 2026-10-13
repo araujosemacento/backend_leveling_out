@@ -24,7 +24,7 @@ Este documento é a fonte primária de verdade e instrução para qualquer desen
 
 ### Fase 1: Onboarding, Sala e Decisão de Turno
 
-Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Azul / A** e **Equipe Vermelha / B**). Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
+Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Corvo / A** e **Equipe Águia / B**). Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
 
 ### Fase 2: O Core Loop da Rodada (Dica, Palpite e Revelação)
 
