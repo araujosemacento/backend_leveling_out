@@ -83,7 +83,14 @@ backend/
 │   ├── entities/                    <-- EntidadeSessao, EntidadeParticipante e EntidadeDisputa
 │   ├── components/                  <-- ProximityComponent, SecretTargetComponent, PptArbiter, Cleanup
 │   │   └── components_test.go       <-- Testes unitarios Go com detector de condicoes de corrida
-│   ├── hooks/                       <-- Registro de hooks autoritativos e rotas dedicadas
+│   ├── hooks/                       <-- Modulos de hooks e rotas autoritativas
+│   │   ├── register.go              <-- Orquestrador principal de registro
+│   │   ├── lifecycle.go             <-- Hooks de ciclo de vida das colecoes salas, rodadas e jogadores
+│   │   ├── routes_lobby.go          <-- Rotas HTTP de handshake, presenca, equipe e dissolucao
+│   │   ├── routes_ppt.go            <-- Rotas de lances e consulta de PPT
+│   │   ├── routes_match.go          <-- Rotas de inicio de partida e snapshot SQL-Generated JSON
+│   │   ├── cron.go                  <-- Agendamento de crons periodicos de higienizacao
+│   │   └── utils.go                 <-- Utilitarios de token criptografico, sanitizacao e queries SQL
 │   └── schema/
 │       ├── pb_schema.json           <-- Esquema declarativo de colecoes embarcado via //go:embed
 │       └── schema.go                <-- Auto-bootstrap e inicializacao das colecoes
@@ -141,13 +148,4 @@ curl -I http://127.0.0.1:8090/api/health
 
 ```bash
 curl -X GET "http://127.0.0.1:8090/api/leveling/salas/SALA_EXEMPLO/snapshot"
-```
-
-### Expulsão autoritativa de participante pelo anfitrião (Lobby) +
-
-```bash
-+curl -X POST "http://127.0.0.1:8090/api/leveling/salas/SALA_EXEMPLO/expulsar" \
-
-- -H "Content-Type: application/json" \
-- -d '{"host_player_id":"uuid-host","alvo_player_id":"uuid-alvo"}'
 ```
