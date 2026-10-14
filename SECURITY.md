@@ -65,7 +65,7 @@ Atualmente, o projeto encontra-se em um estágio intermediário de transição e
    - Limitar dica a no máximo 60 caracteres.
    - Limitar nome de jogador a no máximo 20 caracteres.
    - Limitar codigo de sala a no máximo 16 caracteres alfanuméricos em caixa alta.
-   - Rejeitar caracteres de controle e tags como <script> ou HTML cru para mitigar riscos de XSS no cliente de outros participantes.
+   - Rejeitar caracteres de controle e tags como `<script>` ou HTML cru para mitigar riscos de XSS no cliente de outros participantes.
 
 3. **Validação de Limites Numéricos e Enumerações:**
    - Palpite: forçar número inteiro compreendido estritamente no intervalo de 0 a 100.
@@ -82,7 +82,7 @@ Atualmente, o projeto encontra-se em um estágio intermediário de transição e
 
 3. **Higienização de Cabeçalhos de Rede no Proxy:**
    - Sobrescrever X-Real-IP e X-Forwarded-For com o endereço IP real da conexão TCP de entrada, ignorando valores previamente injetados pelo cliente.
-   - Validar estritamente o cabeçalho Origin contra a origem autorizada https://araujosemacento.github.io.
+   - Validar estritamente o cabeçalho Origin contra a origem autorizada <https://araujosemacento.github.io>.
 
 ### Camada 3: Mitigação de DDoS e Esgotamento de Recursos
 

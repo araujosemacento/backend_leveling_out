@@ -120,15 +120,24 @@ sudo systemctl enable --now pocketbase-levelingout.service
 
 ```text
 backend/
-├── AGENTS.md                  <-- Guia detalhado para agentes autônomos de IA
-├── CONTRACT.md                <-- Especificação de API, modelos de dados e eventos SSE
-├── README.md                  <-- Este guia
-├── pb_schema.json             <-- Esquema declarativo das coleções do PocketBase
-├── pb_hooks/                  <-- Scripts em JavaScript do runtime Goja
-│   ├── cleanup.pb.js          <-- Cron para purga de salas inativas
-│   └── game_rules.pb.js       <-- Validações de integridade das fases
+├── cmd/
+│   └── server/main.go         <-- Ponto de entrada do servidor PocketBase estendido
+├── internal/
+│   ├── components/            <-- ProximityComponent, SecretTargetComponent, PptArbiter, Cleanup
+│   │   └── components_test.go <-- Testes unitários com verificação de corrida
+│   ├── entities/              <-- EntidadeSessao, EntidadeParticipante e EntidadeDisputa
+│   ├── hooks/                 <-- Registro de hooks autoritativos e endpoints dedicados
+│   └── schema/
+│       ├── pb_schema.json     <-- Esquema declarativo das coleções do PocketBase
+│       └── schema.go          <-- Auto-bootstrap de coleções via //go:embed
 ├── scripts/
-│   ├── download_pocketbase.sh <-- Script de download do binário
-│   └── start_tunnel.sh        <-- Script para inicialização do túnel
+│   └── start_tunnel.sh        <-- Script utilitário para túnel reverso
+├── .github/workflows/
+│   └── release.yml            <-- Pipeline CI/CD de compilação cruzada estática
+├── AGENTS.md                  <-- Guia canônico para agentes autônomos de IA
+├── CHANGELOG.md               <-- Histórico formal de versões (Keep a Changelog)
+├── CONTRACT.md                <-- Especificação de API, modelos de dados e rotas SSE
+├── README.md                  <-- Este guia
+├── go.mod / go.sum            <-- Módulos e dependências em Go
 └── .gitignore                 <-- Proteção contra commit de dados de runtime
 ```

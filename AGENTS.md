@@ -84,7 +84,9 @@ backend/
 │   ├── components/                  <-- ProximityComponent, SecretTargetComponent, PptArbiter, Cleanup
 │   │   └── components_test.go       <-- Testes unitarios Go com detector de condicoes de corrida
 │   ├── hooks/                       <-- Registro de hooks autoritativos e rotas dedicadas
-│   └── schema/                      <-- Auto-bootstrap de colecoes via pb_schema.json embarcado
+│   └── schema/
+│       ├── pb_schema.json           <-- Esquema declarativo de colecoes embarcado via //go:embed
+│       └── schema.go                <-- Auto-bootstrap e inicializacao das colecoes
 ├── scripts/
 │   └── start_tunnel.sh              <-- Script utilitario de tunel reverso (Tailscale / Cloudflare)
 ├── .github/workflows/
@@ -93,7 +95,6 @@ backend/
 ├── CONTRACT.md                      <-- Especificacao de contratos REST, rotas e payloads
 ├── README.md                        <-- Instrucoes de compilacao, execucao e operacao
 ├── AGENTS.md                        <-- Este documento (fonte de verdade para agentes de IA)
-├── pb_schema.json                   <-- Esquema declarativo de colecoes e regras
 ├── go.mod / go.sum                  <-- Modulos e dependencias de compilacao Go
 ├── .env.example                     <-- Modelo de variaveis de ambiente
 └── .gitignore                       <-- Bloqueio de artefatos de build e banco local
