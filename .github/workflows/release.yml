@@ -136,9 +136,9 @@ jobs:
         run: |
           TAG="${{ steps.get_tag.outputs.tag }}"
           CLEAN_TAG="${TAG#v}"
-          
+
           echo "Processando notas para a tag: $TAG (sem v: $CLEAN_TAG)"
-          
+
           # Script awk procedural para extrair a secao correspondente a tag
           awk -v tag="$CLEAN_TAG" '
             BEGIN {
@@ -177,7 +177,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_tag.outputs.tag }}
-          name: "Leveling Out Backend: ${{ steps.get_tag.outputs.tag }}"
+          name: 'Leveling Out Backend: ${{ steps.get_tag.outputs.tag }}'
           draft: false
           prerelease: false
           body_path: RELEASE_NOTES.md

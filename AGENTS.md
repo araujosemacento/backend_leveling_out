@@ -67,6 +67,9 @@ O backend e fundamentado no **PocketBase** estendido diretamente como framework 
      - `SecretTargetComponent` (`internal/components/secret_target.go`): segredo seguro [5, 95] com `crypto/rand`.
      - `PptArbiterComponent` (`internal/components/ppt_arbiter.go`): arbitragem concorrente thread-safe (`sync.RWMutex`).
      - `CleanupComponent` (`internal/components/cleanup.go`): purga automatizada em segundo plano.
+7. **Proibição de Commits e Pushes Autônomos:**
+   - Agentes de IA são expressamente proibidos de executar `git commit`, `git tag` ou `git push` de forma autônoma.
+   - O agente deve unicamente fornecer o sumário estruturado, a descrição detalhada e o comando git sugerido pronto para que o desenvolvedor humano realize a ação manualmente.
 
 ---
 
