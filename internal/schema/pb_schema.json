@@ -967,7 +967,7 @@
 				"name": "placar_a",
 				"onlyInt": false,
 				"presentable": false,
-				"required": true,
+				"required": false,
 				"system": false,
 				"type": "number"
 			},
@@ -980,7 +980,7 @@
 				"name": "placar_b",
 				"onlyInt": false,
 				"presentable": false,
-				"required": true,
+				"required": false,
 				"system": false,
 				"type": "number"
 			},
@@ -1004,6 +1004,21 @@
 				"max": 128,
 				"min": 0,
 				"name": "host_id",
+				"pattern": "",
+				"presentable": false,
+				"primaryKey": false,
+				"required": false,
+				"system": false,
+				"type": "text"
+			},
+			{
+				"autogeneratePattern": "",
+				"help": "",
+				"hidden": false,
+				"id": "text_motivo_fim",
+				"max": 64,
+				"min": 0,
+				"name": "motivo_fim",
 				"pattern": "",
 				"presentable": false,
 				"primaryKey": false,
@@ -1108,13 +1123,28 @@
 				"type": "bool"
 			},
 			{
+				"autogeneratePattern": "",
+				"help": "",
+				"hidden": true,
+				"id": "text_session_token",
+				"max": 64,
+				"min": 0,
+				"name": "session_token",
+				"pattern": "",
+				"presentable": false,
+				"primaryKey": false,
+				"required": false,
+				"system": false,
+				"type": "text"
+			},
+			{
 				"help": "",
 				"hidden": false,
 				"id": "select3021299061",
 				"maxSelect": 1,
 				"name": "papel",
 				"presentable": false,
-				"required": true,
+				"required": false,
 				"system": false,
 				"type": "select",
 				"values": ["CODIFICADOR", "PALPITEIRO", "ESPECTADOR"]
@@ -1127,7 +1157,7 @@
 				"min": "",
 				"name": "last_seen",
 				"presentable": false,
-				"required": true,
+				"required": false,
 				"system": false,
 				"type": "date"
 			}

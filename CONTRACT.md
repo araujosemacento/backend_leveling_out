@@ -175,4 +175,34 @@ O hook autoritativo grava o campo `pontos` no registro de `rodadas` e incrementa
 - **Respostas HTTP:**
   - `200 OK`: `{ "message": "Partida iniciada com sucesso", "fase": "INICIATIVA" }`
   - `400 Bad Request`: Sala incompleta (`"A partida requer exatamente 4 jogadores para iniciar"`) ou permissão negada (`"Apenas o dono da sala pode iniciar a partida"`).
+
+---
+
+### 5.2. Expulsão de Participante pelo Anfitrião (Kick de Jogador)
+
+- **Rota:** `POST /api/leveling/salas/{codigo}/expulsar`
+- **Permissão:** Restrito ao anfitrião da sala (`host_id`).
+- **Headers:** `Content-Type: application/json`
+- **Payload:**
+  ```json
+  {
+    "host_player_id": "uuid-do-host",
+    "alvo_player_id": "uuid-do-participante-alvo"
+  }
+  ```
+- **Comportamento Autoritativo:**
+  1. Localiza a sala pelo `codigo` informado na rota e valida sua existência.
+  2. Garante que a sala se encontra estritamente na fase `LOBBY` (a expulsão é bloqueada durante partidas em andamento).
+  3. Valida se o `host_player_id` coincide de forma soberana com o `host_id` registrado na sala (Zero Trust).
+  4. Impede auto-expulsão: se `alvo_player_id == host_player_id`, a requisição é rejeitada (o anfitrião deve utilizar a rota de cancelamento ou saída voluntária).
+  5. Localiza o registro do participante em `jogadores` correspondente a `alvo_player_id` vinculado à sala.
+  6. Remove o registro do participante do banco SQLite/PocketBase.
+  7. Se o jogador estava alocado em uma equipe (`A`, `B` ou `ALEATORIO`), a respectiva vaga é liberada imediatamente.
+  8. Dispara evento SSE (`action = "delete"` na coleção `jogadores`) para todos os clientes conectados sincronizarem a composição de equipes e recalcularem o quórum em tempo real.
+  9. O cliente do jogador expulso identifica a perda autoritativa de assento ou recebe notificação de desconexão forçada, sendo redirecionado para a tela inicial (`/`) com aviso bloqueante de expulsão pelo anfitrião.
+- **Respostas HTTP:**
+  - `200 OK`: `{ "message": "Participante removido da sala com sucesso", "player_id": "uuid-do-participante-alvo" }`
+  - `400 Bad Request`: Parâmetros ausentes, fase incompatível (`"Apenas é permitido expulsar participantes durante o Lobby"`) ou tentativa de auto-expulsão (`"O anfitrião não pode expulsar a si mesmo"`).
+  - `403 Forbidden`: Credencial inválida (`"Apenas o anfitrião possui autoridade para expulsar participantes"`).
+  - `404 Not Found`: Sala ou participante não encontrado.
 $$

@@ -24,7 +24,7 @@ Este documento é a fonte primária de verdade e instrução para qualquer desen
 
 ### Fase 1: Onboarding, Sala e Decisão de Turno
 
-Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Corvo / A** e **Equipe Águia / B**). Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
+Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Corvo / A** e **Equipe Águia / B**) ou alocados como indecisos (`ALEATORIO`). O criador da sala é designado como anfitrião (`is_host`), possuindo a prerrogativa autoritativa de moderação para remover participantes indesejados (`POST /api/leveling/salas/{codigo}/expulsar`) e iniciar a partida após o preenchimento de todas as 4 vagas da sala. Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
 
 ### Fase 2: O Core Loop da Rodada (Dica, Palpite e Revelação)
 
@@ -141,4 +141,13 @@ curl -I http://127.0.0.1:8090/api/health
 
 ```bash
 curl -X GET "http://127.0.0.1:8090/api/leveling/salas/SALA_EXEMPLO/snapshot"
+```
+
+### Expulsão autoritativa de participante pelo anfitrião (Lobby) +
+
+```bash
++curl -X POST "http://127.0.0.1:8090/api/leveling/salas/SALA_EXEMPLO/expulsar" \
+
+- -H "Content-Type: application/json" \
+- -d '{"host_player_id":"uuid-host","alvo_player_id":"uuid-alvo"}'
 ```

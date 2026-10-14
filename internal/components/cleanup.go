@@ -65,19 +65,13 @@ func (c *CleanupComponent) PurgeInactiveRooms(app core.App, minutes int) {
 		log.Printf("[CLEANUP] Iniciando higienização: %d sala(s) inativa(s) detectada(s).", len(staleRoomCodes))
 
 		for _, codigo := range staleRoomCodes {
-			room, rErr := app.FindFirstRecordByFilter("salas", "codigo = {:codigo}", dbx.Params{"codigo": codigo})
-			if rErr == nil && room != nil {
+			rooms, rErr := app.FindAllRecords("salas", dbx.HashExp{"codigo": codigo})
+			if rErr == nil && len(rooms) > 0 {
+				room := rooms[0]
 				salaCodigo := room.GetString("codigo")
 
 				// Remove jogadores vinculados
-				players, pErr := app.FindRecordsByFilter(
-					"jogadores",
-					"sala_codigo = {:codigo}",
-					"",
-					0,
-					0,
-					dbx.Params{"codigo": salaCodigo},
-				)
+				players, pErr := app.FindAllRecords("jogadores", dbx.HashExp{"sala_codigo": salaCodigo})
 				if pErr == nil {
 					for _, p := range players {
 						_ = app.Delete(p)
@@ -85,14 +79,7 @@ func (c *CleanupComponent) PurgeInactiveRooms(app core.App, minutes int) {
 				}
 
 				// Remove rodadas vinculadas
-				rounds, rErr := app.FindRecordsByFilter(
-					"rodadas",
-					"sala_codigo = {:codigo}",
-					"",
-					0,
-					0,
-					dbx.Params{"codigo": salaCodigo},
-				)
+				rounds, rErr := app.FindAllRecords("rodadas", dbx.HashExp{"sala_codigo": salaCodigo})
 				if rErr == nil {
 					for _, r := range rounds {
 						_ = app.Delete(r)
