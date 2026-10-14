@@ -30,6 +30,7 @@ type Sala struct {
 	PlacarA     int    `json:"placar_a" db:"placar_a"`
 	PlacarB     int    `json:"placar_b" db:"placar_b"`
 	Vencedor    string `json:"vencedor,omitempty" db:"vencedor"`
+	HostID      string `json:"host_id,omitempty" db:"host_id"`
 }
 
 // Rodada representa a instância volátil do ciclo micro-temporal

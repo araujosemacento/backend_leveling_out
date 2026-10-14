@@ -995,6 +995,21 @@
 				"system": false,
 				"type": "select",
 				"values": ["A", "B"]
+			},
+			{
+				"autogeneratePattern": "",
+				"help": "",
+				"hidden": false,
+				"id": "text_host_id",
+				"max": 128,
+				"min": 0,
+				"name": "host_id",
+				"pattern": "",
+				"presentable": false,
+				"primaryKey": false,
+				"required": false,
+				"system": false,
+				"type": "text"
 			}
 		],
 		"id": "pbc_3299543979",
@@ -1080,7 +1095,17 @@
 				"required": true,
 				"system": false,
 				"type": "select",
-				"values": ["A", "B", "ESPECTADOR"]
+				"values": ["A", "B", "ALEATORIO", "ESPECTADOR"]
+			},
+			{
+				"help": "",
+				"hidden": false,
+				"id": "bool_is_host",
+				"name": "is_host",
+				"presentable": false,
+				"required": false,
+				"system": false,
+				"type": "bool"
 			},
 			{
 				"help": "",

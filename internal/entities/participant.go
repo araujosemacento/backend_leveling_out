@@ -6,6 +6,7 @@ import "time"
 const (
 	EquipeCorvo      = "A"
 	EquipeAguia      = "B"
+	EquipeAleatorio  = "ALEATORIO"
 	EquipeEspectador = "ESPECTADOR"
 )
 
@@ -24,5 +25,6 @@ type Jogador struct {
 	Nome       string    `json:"nome" db:"nome"`
 	Equipe     string    `json:"equipe" db:"equipe"`
 	Papel      string    `json:"papel" db:"papel"`
+	IsHost     bool      `json:"is_host" db:"is_host"`
 	LastSeen   time.Time `json:"last_seen" db:"last_seen"`
 }

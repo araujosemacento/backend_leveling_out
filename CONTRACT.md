@@ -22,6 +22,7 @@ Representa a instância de uma partida em andamento (ciclo macro de sessão e pl
 | `placar_a`     | `NUMBER`          |     Não     | Pontuação acumulada da Equipe A (default: `0`).                           |
 | `placar_b`     | `NUMBER`          |     Não     | Pontuação acumulada da Equipe B (default: `0`).                           |
 | `vencedor`     | `SELECT`          |     Não     | Equipe campeã da partida: `''`, `'A'` ou `'B'`.                           |
+| `host_id`      | `TEXT`            |     Não     | UUID do jogador anfitrião e dono da sala.                                 |
 | `created`      | `AUTODATE`        |     Sim     | Timestamp UTC de criação do registro.                                     |
 | `updated`      | `AUTODATE`        |     Sim     | Timestamp UTC da última atualização.                                      |
 
@@ -73,8 +74,9 @@ Representa os participantes presentes em uma sala e o estado de presença.
 | `sala_codigo` | `TEXT`            |     Sim     | Código da sala à qual o jogador pertence.                          |
 | `player_id`   | `TEXT`            |     Sim     | UUID gerado pelo navegador cliente e salvo em `sessionStorage`.    |
 | `nome`        | `TEXT`            |     Sim     | Nome de exibição do jogador (ex.: `"Jogador 1042"`).               |
-| `equipe`      | `SELECT`          |     Sim     | Equipe vinculada: `'A'`, `'B'` ou `'ESPECTADOR'`.                  |
+| `equipe`      | `SELECT`          |     Sim     | Equipe vinculada: `'A'`, `'B'`, `'ALEATORIO'` ou `'ESPECTADOR'`.   |
 | `papel`       | `SELECT`          |     Sim     | Papel no turno: `'CODIFICADOR'`, `'PALPITEIRO'` ou `'ESPECTADOR'`. |
+| `is_host`     | `BOOL`            |     Não     | Define se o jogador é o anfitrião e dono da sala (default: false). |
 | `last_seen`   | `DATE`            |     Sim     | Timestamp UTC atualizado via heartbeat para detecção de presença.  |
 | `created`     | `AUTODATE`        |     Sim     | Timestamp UTC de criação do registro.                              |
 | `updated`     | `AUTODATE`        |     Sim     | Timestamp UTC da última atualização.                               |
@@ -148,5 +150,29 @@ $$ \text{pontos} = \begin{cases}
 0, & \text{se } \Delta > 12\% \quad \text{(Fora da margem)}
 \end{cases}$$
 
-O hook em `game_rules.pb.js` grava o campo `pontos` no registro de `rodadas` e incrementa automaticamente o placar da equipe ativa (`placar_a` ou `placar_b`) na coleção `salas`. Caso a pontuação acumulada atinja o limite estipulado ($\ge 10$ pontos), a sala é automaticamente declarada com o vencedor e avança para `FIM_JOGO`.
+O hook autoritativo grava o campo `pontos` no registro de `rodadas` e incrementa automaticamente o placar da equipe ativa (`placar_a` ou `placar_b`) na coleção `salas`. Caso a pontuação acumulada atinja o limite estipulado ($\ge 10$ pontos), a sala é automaticamente declarada com o vencedor e avança para `FIM_JOGO`.
+
+---
+
+## 5. Endpoints Autoritativos Dedicados
+
+### 5.1. Iniciar Partida e Balanceamento Estocástico
+
+- **Rota:** `POST /api/leveling/salas/{codigo}/iniciar`
+- **Permissão:** Restrito ao anfitrião da sala (`host_id`).
+- **Payload:**
+  ```json
+  {
+    "player_id": "uuid-do-host"
+  }
+  ```
+- **Comportamento Autoritativo:**
+  1. Verifica se a sala está com quórum completo (exatamente 4 jogadores ativos).
+  2. Identifica os jogadores com `equipe = 'ALEATORIO'`.
+  3. Sorteia estocasticamente (`crypto/rand`) esses jogadores entre as vagas remanescentes das equipes Corvo (`A`) e Águia (`B`) até totalizar exatamente 2 integrantes em cada.
+  4. Transiciona o estado da sala para `fase = "INICIATIVA"`.
+  5. Dispara evento SSE notificando todos os clientes conectados.
+- **Respostas HTTP:**
+  - `200 OK`: `{ "message": "Partida iniciada com sucesso", "fase": "INICIATIVA" }`
+  - `400 Bad Request`: Sala incompleta (`"A partida requer exatamente 4 jogadores para iniciar"`) ou permissão negada (`"Apenas o dono da sala pode iniciar a partida"`).
 $$

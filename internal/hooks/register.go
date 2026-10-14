@@ -1,7 +1,9 @@
 package hooks
 
 import (
+	cryptorand "crypto/rand"
 	"log"
+	"math/big"
 	"strconv"
 
 	"github.com/pocketbase/dbx"
@@ -165,7 +167,83 @@ func RegisterGameHooks(app core.App) {
 		return e.Next()
 	})
 
-	// 3. Rotas personalizadas (Disputa de PPT e Snapshot Otimizado)
+	// 3. Regras autoritativas para a coleção jogadores (Quórum máximo de 4, controle de anfitrião e lotação de equipes)
+	app.OnRecordCreateRequest("jogadores").BindFunc(func(e *core.RecordRequestEvent) error {
+		salaCodigo := e.Record.GetString("sala_codigo")
+		if salaCodigo == "" {
+			return e.BadRequestError("sala_codigo é obrigatório.", nil)
+		}
+
+		jogadoresExistentes, _ := app.FindRecordsByFilter(
+			"jogadores",
+			"sala_codigo = {:codigo}",
+			"-created",
+			10,
+			0,
+			dbx.Params{"codigo": salaCodigo},
+		)
+
+		if len(jogadoresExistentes) >= 4 {
+			return e.BadRequestError("A sala já atingiu a capacidade máxima de 4 jogadores.", nil)
+		}
+
+		// O primeiro jogador que entrar na sala torna-se automaticamente o dono (host)
+		if len(jogadoresExistentes) == 0 {
+			e.Record.Set("is_host", true)
+			salas, _ := app.FindRecordsByFilter("salas", "codigo = {:codigo}", "-created", 1, 0, dbx.Params{"codigo": salaCodigo})
+			if len(salas) > 0 {
+				salas[0].Set("host_id", e.Record.GetString("player_id"))
+				_ = app.Save(salas[0])
+			}
+		}
+
+		// Equipe padrão é ALEATORIO se não informada ou se a equipe solicitada já estiver cheia
+		eq := e.Record.GetString("equipe")
+		if eq != entities.EquipeCorvo && eq != entities.EquipeAguia {
+			e.Record.Set("equipe", entities.EquipeAleatorio)
+		} else {
+			count := 0
+			for _, jg := range jogadoresExistentes {
+				if jg.GetString("equipe") == eq {
+					count++
+				}
+			}
+			if count >= 2 {
+				e.Record.Set("equipe", entities.EquipeAleatorio)
+			}
+		}
+
+		return e.Next()
+	})
+
+	app.OnRecordUpdateRequest("jogadores").BindFunc(func(e *core.RecordRequestEvent) error {
+		salaCodigo := e.Record.GetString("sala_codigo")
+		salas, _ := app.FindRecordsByFilter("salas", "codigo = {:codigo}", "-created", 1, 0, dbx.Params{"codigo": salaCodigo})
+		if len(salas) > 0 && salas[0].GetString("fase") == entities.FaseLobby {
+			novaEquipe := e.Record.GetString("equipe")
+			if novaEquipe == entities.EquipeCorvo || novaEquipe == entities.EquipeAguia {
+				jogadoresExistentes, _ := app.FindRecordsByFilter(
+					"jogadores",
+					"sala_codigo = {:codigo} && equipe = {:eq} && id != {:id}",
+					"-created",
+					5,
+					0,
+					dbx.Params{"codigo": salaCodigo, "eq": novaEquipe, "id": e.Record.Id},
+				)
+				if len(jogadoresExistentes) >= 2 {
+					nomeEq := "Corvo"
+					if novaEquipe == entities.EquipeAguia {
+						nomeEq = "Águia"
+					}
+					return e.BadRequestError("A Equipe "+nomeEq+" já atingiu o limite de 2 integrantes.", nil)
+				}
+			}
+		}
+
+		return e.Next()
+	})
+
+	// 4. Rotas personalizadas (Disputa de PPT, Início de Partida e Snapshot Otimizado)
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// Lance de PPT
 		se.Router.POST("/api/ppt/lance", func(e *core.RequestEvent) error {
@@ -234,6 +312,119 @@ func RegisterGameHooks(app core.App) {
 			return e.JSON(200, status)
 		})
 
+		// Iniciar Partida (Exclusivo do Anfitrião, Quórum estrito de 4 jogadores, balanceamento de aleatórios)
+		se.Router.POST("/api/leveling/salas/{codigo}/iniciar", func(e *core.RequestEvent) error {
+			codigo := e.Request.PathValue("codigo")
+			if codigo == "" {
+				return e.BadRequestError("Código da sala é obrigatório.", nil)
+			}
+
+			// Identifica o jogador pelo header X-Player-Id ou pelo corpo
+			playerId := e.Request.Header.Get("X-Player-Id")
+			if playerId == "" {
+				type IniciarReq struct {
+					PlayerID string `json:"playerId"`
+				}
+				var req IniciarReq
+				_ = e.BindBody(&req)
+				playerId = req.PlayerID
+			}
+
+			salas, err := app.FindRecordsByFilter("salas", "codigo = {:codigo}", "-created", 1, 0, dbx.Params{"codigo": codigo})
+			if err != nil || len(salas) == 0 {
+				return e.NotFoundError("Sala não encontrada.", nil)
+			}
+			sala := salas[0]
+
+			if sala.GetString("fase") != entities.FaseLobby {
+				return e.BadRequestError("A partida já foi iniciada.", nil)
+			}
+
+			// Valida permissão de anfitrião
+			hostId := sala.GetString("host_id")
+			if hostId != "" && playerId != "" && hostId != playerId {
+				return e.ForbiddenError("Apenas o anfitrião da sala pode iniciar a partida.", nil)
+			}
+
+			// Busca todos os jogadores da sala
+			jogadores, err := app.FindRecordsByFilter("jogadores", "sala_codigo = {:codigo}", "created", 10, 0, dbx.Params{"codigo": codigo})
+			if err != nil || len(jogadores) != 4 {
+				return e.BadRequestError("São necessários exatamente 4 jogadores na sala para iniciar a partida.", nil)
+			}
+
+			// Se host_id não estava salvo na sala mas o jogador possui is_host, valida
+			if hostId == "" {
+				isHostFound := false
+				for _, jg := range jogadores {
+					if jg.GetBool("is_host") && jg.GetString("player_id") == playerId {
+						isHostFound = true
+						break
+					}
+				}
+				if playerId != "" && !isHostFound && jogadores[0].GetString("player_id") != playerId {
+					return e.ForbiddenError("Apenas o anfitrião da sala pode iniciar a partida.", nil)
+				}
+			}
+
+			// Contagem de equipes e coleta de aleatórios
+			var aleatorios []*core.Record
+			countA := 0
+			countB := 0
+
+			for _, jg := range jogadores {
+				eq := jg.GetString("equipe")
+				switch eq {
+				case entities.EquipeCorvo:
+					countA++
+				case entities.EquipeAguia:
+					countB++
+				default:
+					aleatorios = append(aleatorios, jg)
+				}
+			}
+
+			// Se houver participantes indecisos/aleatórios, embaralha estocasticamente
+			if len(aleatorios) > 1 {
+				for i := len(aleatorios) - 1; i > 0; i-- {
+					nBig, errRand := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(i+1)))
+					if errRand == nil {
+						j := nBig.Int64()
+						aleatorios[i], aleatorios[j] = aleatorios[j], aleatorios[i]
+					}
+				}
+			}
+
+			// Aloca os aleatórios para completar 2 na Equipe A e 2 na Equipe B
+			for _, jg := range aleatorios {
+				if countA < 2 {
+					jg.Set("equipe", entities.EquipeCorvo)
+					countA++
+				} else {
+					jg.Set("equipe", entities.EquipeAguia)
+					countB++
+				}
+				if errSave := app.Save(jg); errSave != nil {
+					log.Printf("[INICIAR PARTIDA] Erro ao balancear equipe do jogador %s: %v", jg.Id, errSave)
+				}
+			}
+
+			// Transiciona a sala para INICIATIVA
+			sala.Set("fase", entities.FaseIniciativa)
+			sala.Set("rodada_atual", 1)
+			if errSave := app.Save(sala); errSave != nil {
+				return e.InternalServerError("Falha ao atualizar o estado da sala.", errSave)
+			}
+
+			log.Printf("[INICIAR PARTIDA] Sala '%s' iniciada pelo host '%s'. Fase: %s (Equipe Corvo: %d, Equipe Águia: %d)",
+				codigo, playerId, entities.FaseIniciativa, countA, countB)
+
+			return e.JSON(200, map[string]any{
+				"success": true,
+				"fase":    entities.FaseIniciativa,
+				"message": "Partida iniciada com sucesso.",
+			})
+		})
+
 		// Rota Otimizada de Snapshot: SQL-Generated JSON (Zero-Copy Pass-Through)
 		se.Router.GET("/api/leveling/salas/{codigo}/snapshot", func(e *core.RequestEvent) error {
 			codigo := e.Request.PathValue("codigo")
@@ -243,6 +434,7 @@ func RegisterGameHooks(app core.App) {
 				SELECT json_object(
 					'salaCodigo', codigo,
 					'fase', fase,
+					'hostId', host_id,
 					'rodadaAtual', rodada,
 					'equipeAtiva', equipe_ativa,
 					'placarA', placar_a,
@@ -255,7 +447,8 @@ func RegisterGameHooks(app core.App) {
 								'playerId', player_id,
 								'nome', nome,
 								'equipe', equipe,
-								'papel', papel
+								'papel', papel,
+								'isHost', is_host
 							)
 						)
 						FROM jogadores
