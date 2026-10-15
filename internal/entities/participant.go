@@ -4,8 +4,8 @@ import "time"
 
 // Identificadores canônicos das equipes sob os estandartes de animais
 const (
-	EquipeCorvo      = "A"
-	EquipeAguia      = "B"
+	EquipePato       = "A"
+	EquipeGanso      = "B"
 	EquipeAleatorio  = "ALEATORIO"
 	EquipeEspectador = "ESPECTADOR"
 )

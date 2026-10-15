@@ -24,7 +24,7 @@ Este documento é a fonte primária de verdade e instrução para qualquer desen
 
 ### Fase 1: Onboarding, Sala e Decisão de Turno
 
-Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Corvo / A** e **Equipe Águia / B**) ou alocados como indecisos (`ALEATORIO`). O criador da sala é designado como anfitrião (`is_host`), possuindo a prerrogativa autoritativa de moderação para remover participantes indesejados (`POST /api/leveling/salas/{codigo}/expulsar`) e iniciar a partida após o preenchimento de todas as 4 vagas da sala. Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
+Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Pato / A** e **Equipe Ganso / B**) ou alocados como indecisos (`ALEATORIO`). O criador da sala é designado como anfitrião (`is_host`), possuindo a prerrogativa autoritativa de moderação para remover participantes indesejados (`POST /api/leveling/salas/{codigo}/expulsar`) e iniciar a partida após o preenchimento de todas as 4 vagas da sala. Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
 
 ### Fase 2: O Core Loop da Rodada (Dica, Palpite e Revelação)
 
@@ -61,7 +61,7 @@ O backend e fundamentado no **PocketBase** estendido diretamente como framework 
 6. **Composicao por Entidades e Componentes Atomicos:**
    - O backend e o arbitro autoritativo do sistema distribuido:
      - `EntidadeSessao` (`internal/entities/session.go`): salas e rodadas ativas.
-     - `EntidadeParticipante` (`internal/entities/participant.go`): jogadores e equipes Corvo e Aguia.
+     - `EntidadeParticipante` (`internal/entities/participant.go`): jogadores e equipes Pato e Ganso.
      - `EntidadeDisputa` (`internal/entities/contest.go`): lances e resolucoes de confrontos.
      - `ProximityComponent` (`internal/components/proximity.go`): algoritmo matematico de pontuacao por tolerancia.
      - `SecretTargetComponent` (`internal/components/secret_target.go`): segredo seguro [5, 95] com `crypto/rand`.
@@ -86,7 +86,7 @@ backend/
 │   ├── hooks/                       <-- Modulos de hooks e rotas autoritativas
 │   │   ├── register.go              <-- Orquestrador principal de registro
 │   │   ├── lifecycle.go             <-- Hooks de ciclo de vida das colecoes salas, rodadas e jogadores
-│   │   ├── routes_lobby.go          <-- Rotas HTTP de handshake, presenca, equipe e dissolucao
+│   │   ├── routes_lobby.go          <-- Rotas HTTP de handshake, presenca, equipe, moderacao/expulsao e dissolucao
 │   │   ├── routes_ppt.go            <-- Rotas de lances e consulta de PPT
 │   │   ├── routes_match.go          <-- Rotas de inicio de partida e snapshot SQL-Generated JSON
 │   │   ├── cron.go                  <-- Agendamento de crons periodicos de higienizacao

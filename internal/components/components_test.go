@@ -56,11 +56,11 @@ func TestPptArbiterComponent(t *testing.T) {
 	salaCodigo := "TEST_SALA"
 	rodada := 1
 
-	// 1. Lance da Equipe Corvo (A)
+	// 1. Lance da Equipe Pato (A)
 	res1, resolved1, err1 := arbiter.SubmitMove(entities.PptMoveRequest{
 		SalaCodigo: salaCodigo,
 		PlayerID:   "player1",
-		Equipe:     entities.EquipeCorvo,
+		Equipe:     entities.EquipePato,
 		Lance:      entities.LancePedra,
 		Rodada:     rodada,
 	})
@@ -74,11 +74,11 @@ func TestPptArbiterComponent(t *testing.T) {
 		t.Errorf("Status esperado %s, recebido %s", entities.StatusAguardandoOponente, res1.Status)
 	}
 
-	// 2. Lance da Equipe Águia (B) - Tesoura contra Pedra -> Vitória de Corvo (A)
+	// 2. Lance da Equipe Ganso (B) - Tesoura contra Pedra -> Vitória de Pato (A)
 	res2, resolved2, err2 := arbiter.SubmitMove(entities.PptMoveRequest{
 		SalaCodigo: salaCodigo,
 		PlayerID:   "player2",
-		Equipe:     entities.EquipeAguia,
+		Equipe:     entities.EquipeGanso,
 		Lance:      entities.LanceTesoura,
 		Rodada:     rodada,
 	})
@@ -88,7 +88,7 @@ func TestPptArbiterComponent(t *testing.T) {
 	if !resolved2 {
 		t.Errorf("Rodada deveria ter sido resolvida com 2 lances")
 	}
-	if res2.Vencedor != entities.EquipeCorvo {
-		t.Errorf("Vencedor esperado %s, recebido %s", entities.EquipeCorvo, res2.Vencedor)
+	if res2.Vencedor != entities.EquipePato {
+		t.Errorf("Vencedor esperado %s, recebido %s", entities.EquipePato, res2.Vencedor)
 	}
 }

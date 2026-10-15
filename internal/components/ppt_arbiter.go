@@ -81,11 +81,11 @@ func (a *PptArbiterComponent) SubmitMove(req entities.PptMoveRequest) (*entities
 	}
 
 	lanceEquipeA := p2.Lance
-	if p1.Equipe == entities.EquipeCorvo {
+	if p1.Equipe == entities.EquipePato {
 		lanceEquipeA = p1.Lance
 	}
 	lanceEquipeB := p2.Lance
-	if p1.Equipe == entities.EquipeAguia {
+	if p1.Equipe == entities.EquipeGanso {
 		lanceEquipeB = p1.Lance
 	}
 
@@ -97,10 +97,10 @@ func (a *PptArbiterComponent) SubmitMove(req entities.PptMoveRequest) (*entities
 		if (lanceEquipeA == entities.LancePedra && lanceEquipeB == entities.LanceTesoura) ||
 			(lanceEquipeA == entities.LancePapel && lanceEquipeB == entities.LancePedra) ||
 			(lanceEquipeA == entities.LanceTesoura && lanceEquipeB == entities.LancePapel) {
-			vencedor = entities.EquipeCorvo
+			vencedor = entities.EquipePato
 			resultadoSlug = "VITORIA_A"
 		} else {
-			vencedor = entities.EquipeAguia
+			vencedor = entities.EquipeGanso
 			resultadoSlug = "VITORIA_B"
 		}
 	}

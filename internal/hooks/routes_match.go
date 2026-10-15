@@ -75,9 +75,9 @@ func registerMatchRoutes(se *core.ServeEvent, app core.App) {
 		for _, jg := range jogadores {
 			eq := jg.GetString("equipe")
 			switch eq {
-			case entities.EquipeCorvo:
+			case entities.EquipePato:
 				countA++
-			case entities.EquipeAguia:
+			case entities.EquipeGanso:
 				countB++
 			default:
 				aleatorios = append(aleatorios, jg)
@@ -98,10 +98,10 @@ func registerMatchRoutes(se *core.ServeEvent, app core.App) {
 		// Aloca os aleatórios para completar 2 na Equipe A e 2 na Equipe B
 		for _, jg := range aleatorios {
 			if countA < 2 {
-				jg.Set("equipe", entities.EquipeCorvo)
+				jg.Set("equipe", entities.EquipePato)
 				countA++
 			} else {
-				jg.Set("equipe", entities.EquipeAguia)
+				jg.Set("equipe", entities.EquipeGanso)
 				countB++
 			}
 			if errSave := app.Save(jg); errSave != nil {
@@ -117,7 +117,7 @@ func registerMatchRoutes(se *core.ServeEvent, app core.App) {
 			return e.InternalServerError("Falha ao atualizar o estado da sala.", errSave)
 		}
 
-		log.Printf("[INICIAR PARTIDA] Sala '%s' iniciada pelo host '%s'. Fase: %s (Equipe Corvo: %d, Equipe Águia: %d)",
+		log.Printf("[INICIAR PARTIDA] Sala '%s' iniciada pelo host '%s'. Fase: %s (Equipe Pato: %d, Equipe Ganso: %d)",
 			codigo, playerId, entities.FaseIniciativa, countA, countB)
 
 		return e.JSON(200, map[string]any{

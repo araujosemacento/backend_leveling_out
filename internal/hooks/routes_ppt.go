@@ -48,9 +48,9 @@ func registerPptRoutes(se *core.ServeEvent, app core.App, pptArbiter *components
 			sala := salas[0]
 			if justResolved {
 				switch res.Vencedor {
-				case entities.EquipeCorvo:
+				case entities.EquipePato:
 					sala.Set("placar_a", sala.GetInt("placar_a")+1)
-				case entities.EquipeAguia:
+				case entities.EquipeGanso:
 					sala.Set("placar_b", sala.GetInt("placar_b")+1)
 				}
 				sala.Set("rodada", req.Rodada+1)

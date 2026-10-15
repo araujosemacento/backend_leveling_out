@@ -47,18 +47,18 @@ func registerLifecycleHooks(app core.App, proximity *components.ProximityCompone
 			targetVitoria := entities.MetaPontuacaoPadrao
 
 			switch equipe {
-			case entities.EquipeCorvo:
+			case entities.EquipePato:
 				novoPlacar := e.Record.GetInt("placar_a") + res.Pontos
 				e.Record.Set("placar_a", novoPlacar)
 				if novoPlacar >= targetVitoria {
-					e.Record.Set("vencedor", entities.EquipeCorvo)
+					e.Record.Set("vencedor", entities.EquipePato)
 					e.Record.Set("fase", entities.FaseFimJogo)
 				}
-			case entities.EquipeAguia:
+			case entities.EquipeGanso:
 				novoPlacar := e.Record.GetInt("placar_b") + res.Pontos
 				e.Record.Set("placar_b", novoPlacar)
 				if novoPlacar >= targetVitoria {
-					e.Record.Set("vencedor", entities.EquipeAguia)
+					e.Record.Set("vencedor", entities.EquipeGanso)
 					e.Record.Set("fase", entities.FaseFimJogo)
 				}
 			}
@@ -125,18 +125,18 @@ func registerLifecycleHooks(app core.App, proximity *components.ProximityCompone
 				targetVitoria := entities.MetaPontuacaoPadrao
 
 				switch equipe {
-				case entities.EquipeCorvo:
+				case entities.EquipePato:
 					novoPlacar := sala.GetInt("placar_a") + res.Pontos
 					sala.Set("placar_a", novoPlacar)
 					if novoPlacar >= targetVitoria {
-						sala.Set("vencedor", entities.EquipeCorvo)
+						sala.Set("vencedor", entities.EquipePato)
 						sala.Set("fase", entities.FaseFimJogo)
 					}
-				case entities.EquipeAguia:
+				case entities.EquipeGanso:
 					novoPlacar := sala.GetInt("placar_b") + res.Pontos
 					sala.Set("placar_b", novoPlacar)
 					if novoPlacar >= targetVitoria {
-						sala.Set("vencedor", entities.EquipeAguia)
+						sala.Set("vencedor", entities.EquipeGanso)
 						sala.Set("fase", entities.FaseFimJogo)
 					}
 				}
@@ -177,7 +177,7 @@ func registerLifecycleHooks(app core.App, proximity *components.ProximityCompone
 
 		// Equipe padrão é ALEATORIO se não informada ou se a equipe solicitada já estiver cheia
 		eq := e.Record.GetString("equipe")
-		if eq != entities.EquipeCorvo && eq != entities.EquipeAguia {
+		if eq != entities.EquipePato && eq != entities.EquipeGanso {
 			e.Record.Set("equipe", entities.EquipeAleatorio)
 		} else {
 			count := 0
@@ -199,16 +199,16 @@ func registerLifecycleHooks(app core.App, proximity *components.ProximityCompone
 		salas, _ := app.FindAllRecords("salas", dbx.HashExp{"codigo": salaCodigo})
 		if len(salas) > 0 && salas[0].GetString("fase") == entities.FaseLobby {
 			novaEquipe := e.Record.GetString("equipe")
-			if novaEquipe == entities.EquipeCorvo || novaEquipe == entities.EquipeAguia {
+			if novaEquipe == entities.EquipePato || novaEquipe == entities.EquipeGanso {
 				jogadoresExistentes, _ := app.FindAllRecords(
 					"jogadores",
 					dbx.HashExp{"sala_codigo": salaCodigo, "equipe": novaEquipe},
 					dbx.NewExp("id != {:id}", dbx.Params{"id": e.Record.Id}),
 				)
 				if len(jogadoresExistentes) >= 2 {
-					nomeEq := "Corvo"
-					if novaEquipe == entities.EquipeAguia {
-						nomeEq = "Águia"
+					nomeEq := "Pato"
+					if novaEquipe == entities.EquipeGanso {
+						nomeEq = "Ganso"
 					}
 					return e.BadRequestError("A Equipe "+nomeEq+" já atingiu o limite de 2 integrantes.", nil)
 				}

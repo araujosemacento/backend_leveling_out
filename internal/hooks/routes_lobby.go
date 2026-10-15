@@ -54,7 +54,7 @@ func registerLobbyRoutes(se *core.ServeEvent, app core.App) {
 			sala.Set("fase", entities.FaseLobby)
 			sala.Set("rodada", 1)
 			sala.Set("rodada_atual", 1)
-			sala.Set("equipe_ativa", entities.EquipeCorvo)
+			sala.Set("equipe_ativa", entities.EquipePato)
 			sala.Set("placar_a", 0)
 			sala.Set("placar_b", 0)
 
@@ -283,11 +283,11 @@ func registerLobbyRoutes(se *core.ServeEvent, app core.App) {
 		}
 
 		novaEquipe := req.Equipe
-		if novaEquipe != entities.EquipeCorvo && novaEquipe != entities.EquipeAguia {
+		if novaEquipe != entities.EquipePato && novaEquipe != entities.EquipeGanso {
 			novaEquipe = entities.EquipeAleatorio
 		}
 
-		if novaEquipe == entities.EquipeCorvo || novaEquipe == entities.EquipeAguia {
+		if novaEquipe == entities.EquipePato || novaEquipe == entities.EquipeGanso {
 			outros, _ := app.FindAllRecords("jogadores",
 				dbx.HashExp{"sala_codigo": codigo, "equipe": novaEquipe},
 				dbx.NewExp("player_id != {:pid}", dbx.Params{"pid": playerId}),
@@ -330,5 +330,84 @@ func registerLobbyRoutes(se *core.ServeEvent, app core.App) {
 
 		log.Printf("[SALA] Sala '%s' desfeita pelo anfitrião '%s'", codigo, playerId)
 		return e.JSON(200, map[string]any{"success": true})
+	})
+
+	// Expulsar Participante (Exclusivo do Anfitrião no Lobby)
+	se.Router.POST("/api/leveling/salas/{codigo}/expulsar", func(e *core.RequestEvent) error {
+		codigo := e.Request.PathValue("codigo")
+		if codigo == "" {
+			return e.BadRequestError("Código da sala é obrigatório.", nil)
+		}
+
+		type ExpulsarReq struct {
+			HostPlayerID string `json:"host_player_id"`
+			AlvoPlayerID string `json:"alvo_player_id"`
+		}
+		var req ExpulsarReq
+		_ = e.BindBody(&req)
+
+		if req.HostPlayerID == "" {
+			req.HostPlayerID = e.Request.Header.Get("X-Player-Id")
+		}
+
+		if req.AlvoPlayerID == "" {
+			return e.BadRequestError("alvo_player_id é obrigatório.", nil)
+		}
+
+		salas, err := app.FindAllRecords("salas", dbx.HashExp{"codigo": codigo})
+		if err != nil || len(salas) == 0 {
+			return e.NotFoundError("Sala não encontrada.", nil)
+		}
+
+		sala := salas[0]
+
+		if sala.GetString("fase") != entities.FaseLobby {
+			return e.BadRequestError("Apenas é permitido expulsar participantes durante o Lobby.", nil)
+		}
+
+		if req.HostPlayerID == "" || sala.GetString("host_id") != req.HostPlayerID {
+			return e.ForbiddenError("Apenas o anfitrião possui autoridade para expulsar participantes.", nil)
+		}
+
+		sessionToken := e.Request.Header.Get("X-Session-Token")
+		if sessionToken != "" {
+			hosts, _ := app.FindAllRecords("jogadores", dbx.HashExp{
+				"sala_codigo": codigo,
+				"player_id":   req.HostPlayerID,
+			})
+			if len(hosts) > 0 {
+				if tok := hosts[0].GetString("session_token"); tok != "" && tok != sessionToken {
+					return e.UnauthorizedError("Token de sessão do anfitrião inválido.", nil)
+				}
+			}
+		}
+
+		if req.AlvoPlayerID == req.HostPlayerID {
+			return e.BadRequestError("O anfitrião não pode expulsar a si mesmo.", nil)
+		}
+
+		jogadores, err := app.FindAllRecords("jogadores", dbx.HashExp{
+			"sala_codigo": codigo,
+			"player_id":   req.AlvoPlayerID,
+		})
+		if err != nil || len(jogadores) == 0 {
+			return e.NotFoundError("Participante não encontrado.", nil)
+		}
+
+		alvo := jogadores[0]
+		nomeAlvo := alvo.GetString("nome")
+
+		if errDel := app.Delete(alvo); errDel != nil {
+			return e.InternalServerError("Falha ao remover participante.", errDel)
+		}
+
+		log.Printf("[MODERACAO] Participante '%s' (%s) expulso da sala '%s' pelo anfitrião '%s'",
+			nomeAlvo, req.AlvoPlayerID, codigo, req.HostPlayerID)
+
+		return e.JSON(200, map[string]any{
+			"success":   true,
+			"message":   "Participante removido da sala com sucesso",
+			"player_id": req.AlvoPlayerID,
+		})
 	})
 }

@@ -3,14 +3,21 @@
 Todas as alteracoes notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [v0.3.1] : 2026-10-15
+
+### Adicionado
+
+- Implementação autoritativa do endpoint de moderação `POST /api/leveling/salas/{codigo}/expulsar` com validação de titularidade do anfitrião (`host_id`), checagem de `session_token`, bloqueio de auto-expulsão e deleção atômica com broadcast SSE.
+- Renomeação formal e completa das equipes no domínio de backend para `PATO` e `GANSO` (`EquipePato` e `EquipeGanso`), expurgando referências legadas.
+
 ## [v0.3.0] : 2026-10-14
 
 ### Adicionado
 
 - Rota autoritativa de monitoramento de presenca periodica em `/api/leveling/salas/{codigo}/heartbeat` com validacao de `session_token` e atualizacao do carimbo `last_seen`.
-- Rota autoritativa de selecao e troca de equipes em `/api/leveling/salas/{codigo}/equipe` com limite estrito de 2 integrantes para Aguia e Corvo e emissao em tempo real via SSE.
+- Rota autoritativa de selecao e troca de equipes em `/api/leveling/salas/{codigo}/equipe` com limite estrito de 2 integrantes para Ganso e Pato e emissao em tempo real via SSE.
 - Rota soberana de dissolucao de sala pelo anfitriao em `/api/leveling/salas/{codigo}/desfazer`.
-- Divisao tripartite de equipes (Aleatorio, Corvo, Aguia), controle de quorum de 4 jogadores e validacao de inicio de partida exclusivo pelo anfitriao.
+- Divisao tripartite de equipes (Aleatorio, Pato, Ganso), controle de quorum de 4 jogadores e validacao de inicio de partida exclusivo pelo anfitriao.
 - Especificacao formal do contrato e governanca para a rota autoritativa de moderacao e expulsao de participantes (`POST /api/leveling/salas/{codigo}/expulsar`) em `CONTRACT.md` e `AGENTS.md`.
 - Campos `session_token` na colecao `jogadores` e `motivo_fim` na colecao `salas`, sincronizados de forma idempotente no bootstrap.
 

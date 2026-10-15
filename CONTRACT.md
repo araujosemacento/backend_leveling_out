@@ -101,23 +101,23 @@ const pb = new PocketBase(SERVER_PUBLIC_URL);
 
 // 1. Assinatura da Sala (Ciclo Macro e Placar)
 pb.collection('salas').subscribe(salaRecordId, (e) => {
-	if (e.action === 'update') {
-		gameEngine.syncSala(e.record);
-	}
+ if (e.action === 'update') {
+  gameEngine.syncSala(e.record);
+ }
 });
 
 // 2. Assinatura da Rodada Ativa (Tubo, Dica, Palpite e Revelação)
 pb.collection('rodadas').subscribe('*', (e) => {
-	if (e.record.sala_codigo === currentRoomCode) {
-		gameEngine.syncRodada(e.action, e.record);
-	}
+ if (e.record.sala_codigo === currentRoomCode) {
+  gameEngine.syncRodada(e.action, e.record);
+ }
 });
 
 // 3. Assinatura de Presença dos Jogadores
 pb.collection('jogadores').subscribe('*', (e) => {
-	if (e.record.sala_codigo === currentRoomCode) {
-		lobbyEngine.syncJogadores(e.action, e.record);
-	}
+ if (e.record.sala_codigo === currentRoomCode) {
+  lobbyEngine.syncJogadores(e.action, e.record);
+ }
 });
 ```
 
@@ -129,7 +129,7 @@ pb.collection('jogadores').subscribe('*', (e) => {
 
    ```javascript
    pb.collection('jogadores').update(meuJogadorDbId, {
-   	last_seen: new Date().toISOString()
+    last_seen: new Date().toISOString()
    });
    ```
 
@@ -169,7 +169,7 @@ O hook autoritativo grava o campo `pontos` no registro de `rodadas` e incrementa
 - **Comportamento Autoritativo:**
   1. Verifica se a sala está com quórum completo (exatamente 4 jogadores ativos).
   2. Identifica os jogadores com `equipe = 'ALEATORIO'`.
-  3. Sorteia estocasticamente (`crypto/rand`) esses jogadores entre as vagas remanescentes das equipes Corvo (`A`) e Águia (`B`) até totalizar exatamente 2 integrantes em cada.
+  3. Sorteia estocasticamente (`crypto/rand`) esses jogadores entre as vagas remanescentes das equipes Pato (`A`) e Ganso (`B`) até totalizar exatamente 2 integrantes em cada.
   4. Transiciona o estado da sala para `fase = "INICIATIVA"`.
   5. Dispara evento SSE notificando todos os clientes conectados.
 - **Respostas HTTP:**
@@ -205,4 +205,3 @@ O hook autoritativo grava o campo `pontos` no registro de `rodadas` e incrementa
   - `400 Bad Request`: Parâmetros ausentes, fase incompatível (`"Apenas é permitido expulsar participantes durante o Lobby"`) ou tentativa de auto-expulsão (`"O anfitrião não pode expulsar a si mesmo"`).
   - `403 Forbidden`: Credencial inválida (`"Apenas o anfitrião possui autoridade para expulsar participantes"`).
   - `404 Not Found`: Sala ou participante não encontrado.
-$$
