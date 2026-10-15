@@ -111,6 +111,7 @@ func registerMatchRoutes(se *core.ServeEvent, app core.App) {
 
 		// Transiciona a sala para INICIATIVA
 		sala.Set("fase", entities.FaseIniciativa)
+		sala.Set("rodada", 1)
 		sala.Set("rodada_atual", 1)
 		if errSave := app.Save(sala); errSave != nil {
 			return e.InternalServerError("Falha ao atualizar o estado da sala.", errSave)

@@ -27,7 +27,10 @@ func registerPptRoutes(se *core.ServeEvent, app core.App, pptArbiter *components
 		// Verifica se a rodada informada não é obsoleta
 		salas, _ := app.FindAllRecords("salas", dbx.HashExp{"codigo": req.SalaCodigo})
 		if len(salas) > 0 {
-			currentRound := salas[0].GetInt("rodada_atual")
+			currentRound := salas[0].GetInt("rodada")
+			if currentRound <= 0 {
+				currentRound = salas[0].GetInt("rodada_atual")
+			}
 			if currentRound > 0 && req.Rodada < currentRound {
 				return e.BadRequestError("Rodada obsoleta. A sala já está na rodada "+strconv.Itoa(currentRound), map[string]any{
 					"rodada_atual": currentRound,
@@ -50,6 +53,7 @@ func registerPptRoutes(se *core.ServeEvent, app core.App, pptArbiter *components
 				case entities.EquipeAguia:
 					sala.Set("placar_b", sala.GetInt("placar_b")+1)
 				}
+				sala.Set("rodada", req.Rodada+1)
 				sala.Set("rodada_atual", req.Rodada+1)
 				_ = app.Save(sala)
 				log.Printf("[PPT] Rodada %d da sala '%s' resolvida: Vencedor %s.", req.Rodada, req.SalaCodigo, res.Vencedor)

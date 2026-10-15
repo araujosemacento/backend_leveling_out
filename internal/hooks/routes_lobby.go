@@ -53,6 +53,7 @@ func registerLobbyRoutes(se *core.ServeEvent, app core.App) {
 			sala.Set("codigo", codigo)
 			sala.Set("fase", entities.FaseLobby)
 			sala.Set("rodada", 1)
+			sala.Set("rodada_atual", 1)
 			sala.Set("equipe_ativa", entities.EquipeCorvo)
 			sala.Set("placar_a", 0)
 			sala.Set("placar_b", 0)
