@@ -3,6 +3,22 @@
 Todas as alteracoes notaveis neste projeto serao documentadas neste arquivo.
 O formato e baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [v0.5.0] : 2026-10-16
+
+### Adicionado
+
+- Arquitetura autônoma em Go nativo com o padrão de Ator (`RoomActor`), isolando cada sala em sua própria goroutine com canal inbox thread-safe.
+- Conexão bidirecional via WebSockets full-duplex (`/ws/salas/{codigo}`) com streaming contínuo do slider analógico (30 a 60 Hz) e envelopes tipados.
+- Gerenciador central de salas em memória RAM (`LobbyHub`), eliminando persistência em disco ou bancos relacionais.
+- Moderação autoritativa pelo anfitrião distinguindo expulsão (desocupação imediata de vaga) e banimento persistente da sala por `DeviceID`.
+- Arbitragem concorrente de Pedra, Papel e Tesoura em memória e catálogo temático embutido de cartas de espectros.
+- Suporte flexível a flags e ao subcomando `serve` no ponto de entrada (`cmd/server/main.go`).
+
+### Removido
+
+- Dependências, schemas (`pb_schema.json`) e hooks legados do PocketBase (`internal/hooks/`).
+- Rotas REST síncronas e difusão unidirecional via Server-Sent Events (SSE).
+
 ## [v0.3.1] : 2026-10-15
 
 ### Adicionado
