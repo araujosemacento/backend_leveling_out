@@ -34,13 +34,27 @@ func (c *CleanupComponent) PurgeInactivePlayers(app core.App, minutes int) {
 	}
 
 	if len(players) > 0 {
-		log.Printf("[CLEANUP] Detectados %d jogador(es) inativo(s). Purgando...", len(players))
+		purgados := 0
 		for _, p := range players {
+			salaCodigo := p.GetString("sala_codigo")
+			salas, errSala := app.FindAllRecords("salas", dbx.HashExp{"codigo": salaCodigo})
+			// Só purga se a sala não existe mais ou se ainda estiver no LOBBY / já FIM_JOGO
+			if errSala == nil && len(salas) > 0 {
+				fase := salas[0].GetString("fase")
+				if fase != "LOBBY" && fase != "FIM_JOGO" {
+					continue
+				}
+			}
+
 			if err := app.Delete(p); err != nil {
 				log.Printf("[CLEANUP ERROR] Erro ao deletar jogador '%s': %v", p.Id, err)
+			} else {
+				purgados++
 			}
 		}
-		log.Printf("[CLEANUP] %d jogador(es) purgado(s) com sucesso.", len(players))
+		if purgados > 0 {
+			log.Printf("[CLEANUP] %d jogador(es) inativo(s) purgado(s) com sucesso.", purgados)
+		}
 	}
 }
 

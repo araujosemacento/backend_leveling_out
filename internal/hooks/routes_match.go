@@ -4,6 +4,7 @@ import (
 	cryptorand "crypto/rand"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -12,7 +13,7 @@ import (
 )
 
 // registerMatchRoutes registra as rotas HTTP de controle e snapshot da partida
-func registerMatchRoutes(se *core.ServeEvent, app core.App) {
+func registerMatchRoutes(se *core.ServeEvent, app core.App, ppt *pptService) {
 	// Iniciar Partida (Exclusivo do Anfitrião, Quórum estrito de 4 jogadores, balanceamento de aleatórios)
 	se.Router.POST("/api/leveling/salas/{codigo}/iniciar", func(e *core.RequestEvent) error {
 		codigo := e.Request.PathValue("codigo")
@@ -67,18 +68,18 @@ func registerMatchRoutes(se *core.ServeEvent, app core.App) {
 			}
 		}
 
-		// Contagem de equipes e coleta de aleatórios
+		// Contagem de equipes e coleta de manuais e aleatórios
+		var manuaisA []*core.Record
+		var manuaisB []*core.Record
 		var aleatorios []*core.Record
-		countA := 0
-		countB := 0
 
 		for _, jg := range jogadores {
 			eq := jg.GetString("equipe")
 			switch eq {
 			case entities.EquipePato:
-				countA++
+				manuaisA = append(manuaisA, jg)
 			case entities.EquipeGanso:
-				countB++
+				manuaisB = append(manuaisB, jg)
 			default:
 				aleatorios = append(aleatorios, jg)
 			}
@@ -95,19 +96,36 @@ func registerMatchRoutes(se *core.ServeEvent, app core.App) {
 			}
 		}
 
+		countA := len(manuaisA)
+		countB := len(manuaisB)
+		var sorteadosA []*core.Record
+		var sorteadosB []*core.Record
+		now := time.Now().UTC()
+
 		// Aloca os aleatórios para completar 2 na Equipe A e 2 na Equipe B
-		for _, jg := range aleatorios {
+		for i, jg := range aleatorios {
+			tSorteio := now.Add(time.Duration(i) * time.Millisecond).Format(formatoDataPB)
+			jg.Set("equipe_desde", tSorteio)
 			if countA < 2 {
 				jg.Set("equipe", entities.EquipePato)
 				countA++
+				sorteadosA = append(sorteadosA, jg)
 			} else {
 				jg.Set("equipe", entities.EquipeGanso)
 				countB++
+				sorteadosB = append(sorteadosB, jg)
 			}
 			if errSave := app.Save(jg); errSave != nil {
 				log.Printf("[INICIAR PARTIDA] Erro ao balancear equipe do jogador %s: %v", jg.Id, errSave)
 			}
 		}
+
+		// Determina os representantes oficiais de cada equipe para o minijogo PPT
+		repA := escolherRepresentante(manuaisA, sorteadosA)
+		repB := escolherRepresentante(manuaisB, sorteadosB)
+
+		// Inicializa a disputa de iniciativa no serviço PPT
+		ppt.Iniciar(sala, repA, repB)
 
 		// Transiciona a sala para INICIATIVA
 		sala.Set("fase", entities.FaseIniciativa)
@@ -117,8 +135,8 @@ func registerMatchRoutes(se *core.ServeEvent, app core.App) {
 			return e.InternalServerError("Falha ao atualizar o estado da sala.", errSave)
 		}
 
-		log.Printf("[INICIAR PARTIDA] Sala '%s' iniciada pelo host '%s'. Fase: %s (Equipe Pato: %d, Equipe Ganso: %d)",
-			codigo, playerId, entities.FaseIniciativa, countA, countB)
+		log.Printf("[INICIAR PARTIDA] Sala '%s' iniciada pelo host '%s'. Fase: %s (Pato: %s, Ganso: %s)",
+			codigo, playerId, entities.FaseIniciativa, repA, repB)
 
 		return e.JSON(200, map[string]any{
 			"success": true,

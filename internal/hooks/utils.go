@@ -44,6 +44,17 @@ func fetchRoomSnapshotRaw(app core.App, codigo string) ([]byte, error) {
 			'placarA', placar_a,
 			'placarB', placar_b,
 			'vencedor', vencedor,
+			'motivoFim', motivo_fim,
+			'pptEstado', ppt_estado,
+			'pptPrazo', ppt_prazo,
+			'pptRevelacaoEm', ppt_revelacao_em,
+			'pptEnviouA', ppt_enviou_a,
+			'pptEnviouB', ppt_enviou_b,
+			'pptRepresentanteA', ppt_representante_a,
+			'pptRepresentanteB', ppt_representante_b,
+			'pptResultado', ppt_resultado,
+			'pptLanceA', ppt_lance_a,
+			'pptLanceB', ppt_lance_b,
 			'jogadores', (
 				SELECT json_group_array(
 					json_object(
@@ -52,7 +63,8 @@ func fetchRoomSnapshotRaw(app core.App, codigo string) ([]byte, error) {
 						'nome', nome,
 						'equipe', equipe,
 						'papel', papel,
-						'isHost', is_host
+						'isHost', is_host,
+						'equipeDesde', equipe_desde
 					)
 				)
 				FROM jogadores

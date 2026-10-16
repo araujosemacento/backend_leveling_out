@@ -7,36 +7,34 @@ const (
 	LanceTesoura = "tesoura"
 )
 
-// Estados de resolução da disputa de iniciativa
+// Subfases da disputa de iniciativa (campo ppt_estado da sala)
 const (
-	StatusAguardandoOponente = "AGUARDANDO_OPONENTE"
-	StatusAguardandoLances   = "AGUARDANDO_LANCES"
-	StatusResolvido          = "RESOLVIDO"
-	VencedorEmpate           = "EMPATE"
+	PptEstadoEscolha   = "ESCOLHA"
+	PptEstadoContagem  = "CONTAGEM"
+	PptEstadoResultado = "RESULTADO"
 )
 
-// PptMoveRequest modela o payload enviado pelo cliente ao lançar uma jogada
+// Resultados canônicos da arbitragem
+const (
+	PptResultadoEmpate   = "EMPATE"
+	PptResultadoVitoriaA = "VITORIA_A"
+	PptResultadoVitoriaB = "VITORIA_B"
+)
+
+// PptMoveRequest modela o payload enviado pelo representante ao lançar sua jogada.
+// A equipe e o jogador são derivados das credenciais da requisição (Zero Trust).
 type PptMoveRequest struct {
-	SalaCodigo string `json:"sala_codigo"`
-	PlayerID   string `json:"player_id"`
-	Equipe     string `json:"equipe"`
-	Lance      string `json:"lance"`
-	Rodada     int    `json:"rodada"`
+	Lance string `json:"lance"`
 }
 
-// PptResultResponse modela o resultado divulgado após a resolução do confronto
+// PptResultResponse modela o resultado arbitrado do confronto
 type PptResultResponse struct {
-	Status    string            `json:"status"`
-	Rodada    int               `json:"rodada"`
-	Vencedor  string            `json:"vencedor"`
 	Resultado string            `json:"resultado"`
+	Vencedor  string            `json:"vencedor"`
 	Lances    map[string]string `json:"lances"`
 }
 
-// PptStatusResponse modela a consulta do estado corrente da disputa
-type PptStatusResponse struct {
-	Status            string   `json:"status"`
-	Rodada            int      `json:"rodada"`
-	JogadoresEnviados int      `json:"jogadores_enviados,omitempty"`
-	EquipesEnviadas   []string `json:"equipes_enviadas"`
+// LanceValido indica se o lance informado pertence ao conjunto canônico
+func LanceValido(lance string) bool {
+	return lance == LancePedra || lance == LancePapel || lance == LanceTesoura
 }

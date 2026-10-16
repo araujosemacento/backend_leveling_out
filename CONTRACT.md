@@ -176,8 +176,6 @@ O hook autoritativo grava o campo `pontos` no registro de `rodadas` e incrementa
   - `200 OK`: `{ "message": "Partida iniciada com sucesso", "fase": "INICIATIVA" }`
   - `400 Bad Request`: Sala incompleta (`"A partida requer exatamente 4 jogadores para iniciar"`) ou permissão negada (`"Apenas o dono da sala pode iniciar a partida"`).
 
----
-
 ### 5.2. Expulsão de Participante pelo Anfitrião (Kick de Jogador)
 
 - **Rota:** `POST /api/leveling/salas/{codigo}/expulsar`
@@ -200,8 +198,40 @@ O hook autoritativo grava o campo `pontos` no registro de `rodadas` e incrementa
   7. Se o jogador estava alocado em uma equipe (`A`, `B` ou `ALEATORIO`), a respectiva vaga é liberada imediatamente.
   8. Dispara evento SSE (`action = "delete"` na coleção `jogadores`) para todos os clientes conectados sincronizarem a composição de equipes e recalcularem o quórum em tempo real.
   9. O cliente do jogador expulso identifica a perda autoritativa de assento ou recebe notificação de desconexão forçada, sendo redirecionado para a tela inicial (`/`) com aviso bloqueante de expulsão pelo anfitrião.
+
+### 5.3. Disputa de Iniciativa (Pedra, Papel e Tesoura)
+
+- **Rota:** `POST /api/leveling/salas/{codigo}/ppt/lance`
+- **Permissão:** Restrito ao representante da equipe na disputa.
+- **Headers:**
+  - `Content-Type: application/json`
+  - `X-Player-Id`: ID do jogador representante
+  - `X-Session-Token`: Token criptográfico de sessão
+- **Payload:**
+  ```json
+  {
+    "lance": "pedra" | "papel" | "tesoura"
+  }
+  ```
+- **Comportamento Autoritativo:**
+  1. Identifica a equipe do jogador e valida se ele é o representante oficial (menor `equipe_desde` na equipe).
+  2. Garante que a disputa está na fase `INICIATIVA` e subfase `ESCOLHA` dentro do prazo de 10 segundos.
+  3. Lance definitivo: impede alteração de lance já submetido.
+  4. Mantém o sigilo do lance em memória (`PptArbiterComponent`) até que ambas as equipes tenham jogado (ou até o timeout/preenchimento).
+  5. Se ambos os lances forem recebidos, inicia imediatamente a contagem regressiva de revelação (`ppt_estado = "CONTAGEM"`).
+  6. Em caso de timeout (10s) ou desconexão do representante, o servidor realiza um lance aleatório por ele.
+  7. Após o "Já!", arbitra o resultado: empate reabre a disputa; vitória define `equipe_ativa` e transiciona automaticamente para `ESCOLHA_ESPECTRO`.
+
+### 5.4. Consulta de Lance Sigiloso da Própria Equipe
+
+- **Rota:** `GET /api/leveling/salas/{codigo}/ppt/meu-lance`
+- **Permissão:** Participante autenticado da sala pertencente a uma equipe.
+- **Headers:**
+  - `X-Player-Id`: ID do jogador
+  - `X-Session-Token`: Token criptográfico de sessão
+- **Comportamento Autoritativo:**
+  - Retorna o lance escolhido pelo representante da equipe do solicitante, permitindo que os espectadores da mesma equipe visualizem `"Sua equipe escolheu [lance]"` sem quebrar o sigilo perante a equipe adversária.
 - **Respostas HTTP:**
-  - `200 OK`: `{ "message": "Participante removido da sala com sucesso", "player_id": "uuid-do-participante-alvo" }`
-  - `400 Bad Request`: Parâmetros ausentes, fase incompatível (`"Apenas é permitido expulsar participantes durante o Lobby"`) ou tentativa de auto-expulsão (`"O anfitrião não pode expulsar a si mesmo"`).
-  - `403 Forbidden`: Credencial inválida (`"Apenas o anfitrião possui autoridade para expulsar participantes"`).
-  - `404 Not Found`: Sala ou participante não encontrado.
+  - `200 OK`: `{ "lance": "pedra" | "papel" | "tesoura" | "" }`
+  - `401 Unauthorized`: Sessão inválida ou expirada.
+  - `404 Not Found`: Sala ou jogador não encontrado.

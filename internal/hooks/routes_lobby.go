@@ -295,6 +295,11 @@ func registerLobbyRoutes(se *core.ServeEvent, app core.App) {
 			if len(outros) >= 2 {
 				return e.BadRequestError("Esta equipe já atingiu o limite de 2 integrantes.", nil)
 			}
+			if jogador.GetString("equipe") != novaEquipe {
+				jogador.Set("equipe_desde", time.Now().UTC().Format("2006-01-02 15:04:05.000Z"))
+			}
+		} else {
+			jogador.Set("equipe_desde", "")
 		}
 
 		jogador.Set("equipe", novaEquipe)

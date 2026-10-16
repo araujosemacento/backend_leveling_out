@@ -1,157 +1,179 @@
 package components
 
 import (
+	cryptorand "crypto/rand"
 	"errors"
-	"fmt"
+	"math/big"
 	"sync"
 
 	"leveling-out-backend/internal/entities"
 )
 
-// RodadaPptMemoria armazena os lances submetidos para uma rodada específica de uma sala
-type RodadaPptMemoria struct {
-	Lances    map[string]entities.PptMoveRequest // mapeado por PlayerID
-	Resultado *entities.PptResultResponse
+// Erros de domínio da arbitragem
+var (
+	ErrDisputaInexistente = errors.New("disputa de PPT inexistente")
+	ErrNaoRepresentante   = errors.New("apenas o representante da equipe pode realizar o lance")
+	ErrLanceInvalido      = errors.New("lance inválido")
+	ErrLanceDefinitivo    = errors.New("o lance da equipe já foi realizado e é definitivo")
+)
+
+// disputaPpt guarda em memória os lances sigilosos da disputa vigente de uma sala
+type disputaPpt struct {
+	representantes map[string]string // equipe -> player_id
+	lances         map[string]string // equipe -> lance
 }
 
-// PptArbiterComponent modela o ArbitroPptComponent com gerenciamento concorrente thread-safe
+// PptArbiterComponent modela o ArbitroPptComponent: guarda os lances em memória
+// (sigilo até a resolução) e arbitra o confronto. É thread-safe.
 type PptArbiterComponent struct {
-	mu      sync.RWMutex
-	rodadas map[string]*RodadaPptMemoria // chave: "ppt_{salaCodigo}_{rodada}"
+	mu        sync.Mutex
+	disputas  map[string]*disputaPpt // chave: código da sala
+	sorteador func(n int) int
 }
 
 // NewPptArbiterComponent inicializa o árbitro de PPT em memória
 func NewPptArbiterComponent() *PptArbiterComponent {
 	return &PptArbiterComponent{
-		rodadas: make(map[string]*RodadaPptMemoria),
+		disputas:  make(map[string]*disputaPpt),
+		sorteador: sorteioSeguro,
 	}
 }
 
-func (a *PptArbiterComponent) makeKey(salaCodigo string, rodada int) string {
-	return fmt.Sprintf("ppt_%s_%d", salaCodigo, rodada)
+func sorteioSeguro(n int) int {
+	v, err := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(n)))
+	if err != nil {
+		return 0
+	}
+	return int(v.Int64())
 }
 
-// SubmitMove processa um lance de PPT de um participante
-// Retorna o resultado, uma flag indicando se a rodada acabou de ser resolvida neste lance, e erro se houver
-func (a *PptArbiterComponent) SubmitMove(req entities.PptMoveRequest) (*entities.PptResultResponse, bool, error) {
-	if req.SalaCodigo == "" || req.PlayerID == "" || req.Equipe == "" || req.Lance == "" {
-		return nil, false, errors.New("parâmetros incompletos para o lance de PPT")
+// Abrir inicia (ou reinicia) a disputa de uma sala, descartando lances anteriores
+func (a *PptArbiterComponent) Abrir(sala, representanteA, representanteB string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.disputas[sala] = &disputaPpt{
+		representantes: map[string]string{
+			entities.EquipePato:  representanteA,
+			entities.EquipeGanso: representanteB,
+		},
+		lances: make(map[string]string),
 	}
+}
 
-	key := a.makeKey(req.SalaCodigo, req.Rodada)
+// Garantir cria a disputa em memória caso ela não exista (ex.: após reinício do servidor)
+func (a *PptArbiterComponent) Garantir(sala, representanteA, representanteB string) {
+	a.mu.Lock()
+	_, ok := a.disputas[sala]
+	a.mu.Unlock()
+	if !ok {
+		a.Abrir(sala, representanteA, representanteB)
+	}
+}
+
+// Fechar descarta a disputa em memória de uma sala
+func (a *PptArbiterComponent) Fechar(sala string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.disputas, sala)
+}
+
+// SubmitMove registra o lance definitivo do representante da equipe.
+// Retorna true quando ambos os lances já foram computados.
+func (a *PptArbiterComponent) SubmitMove(sala, playerID, equipe, lance string) (bool, error) {
+	if !entities.LanceValido(lance) {
+		return false, ErrLanceInvalido
+	}
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	mem, exists := a.rodadas[key]
-	if !exists {
-		mem = &RodadaPptMemoria{
-			Lances: make(map[string]entities.PptMoveRequest),
-		}
-		a.rodadas[key] = mem
+	d, ok := a.disputas[sala]
+	if !ok {
+		return false, ErrDisputaInexistente
+	}
+	if d.representantes[equipe] == "" || d.representantes[equipe] != playerID {
+		return false, ErrNaoRepresentante
+	}
+	if _, jaJogou := d.lances[equipe]; jaJogou {
+		return false, ErrLanceDefinitivo
 	}
 
-	// Se a rodada já tiver sido resolvida anteriormente, retorna o resultado cacheado
-	if mem.Resultado != nil {
-		return mem.Resultado, false, nil
-	}
-
-	// Registra o lance do jogador
-	mem.Lances[req.PlayerID] = req
-
-	// Se ainda não temos lances suficientes de ambas as equipes
-	if len(mem.Lances) < 2 {
-		return &entities.PptResultResponse{
-			Status: entities.StatusAguardandoOponente,
-			Rodada: req.Rodada,
-		}, false, nil
-	}
-
-	// Extrai lances dos dois primeiros jogadores participantes
-	var p1, p2 entities.PptMoveRequest
-	first := true
-	for _, lance := range mem.Lances {
-		if first {
-			p1 = lance
-			first = false
-		} else {
-			p2 = lance
-			break
-		}
-	}
-
-	lanceEquipeA := p2.Lance
-	if p1.Equipe == entities.EquipePato {
-		lanceEquipeA = p1.Lance
-	}
-	lanceEquipeB := p2.Lance
-	if p1.Equipe == entities.EquipeGanso {
-		lanceEquipeB = p1.Lance
-	}
-
-	// Arbitragem oficial de Pedra, Papel e Tesoura
-	vencedor := entities.VencedorEmpate
-	resultadoSlug := "EMPATE"
-
-	if lanceEquipeA != lanceEquipeB {
-		if (lanceEquipeA == entities.LancePedra && lanceEquipeB == entities.LanceTesoura) ||
-			(lanceEquipeA == entities.LancePapel && lanceEquipeB == entities.LancePedra) ||
-			(lanceEquipeA == entities.LanceTesoura && lanceEquipeB == entities.LancePapel) {
-			vencedor = entities.EquipePato
-			resultadoSlug = "VITORIA_A"
-		} else {
-			vencedor = entities.EquipeGanso
-			resultadoSlug = "VITORIA_B"
-		}
-	}
-
-	res := &entities.PptResultResponse{
-		Status:    entities.StatusResolvido,
-		Rodada:    req.Rodada,
-		Vencedor:  vencedor,
-		Resultado: resultadoSlug,
-		Lances: map[string]string{
-			"A": lanceEquipeA,
-			"B": lanceEquipeB,
-		},
-	}
-
-	mem.Resultado = res
-	return res, true, nil
+	d.lances[equipe] = lance
+	return len(d.lances) == 2, nil
 }
 
-// GetStatus retorna o estado presente da disputa de PPT
-func (a *PptArbiterComponent) GetStatus(salaCodigo string, rodada int) *entities.PptStatusResponse {
-	key := a.makeKey(salaCodigo, rodada)
+// Preencher sorteia um lance aleatório para cada equipe que ainda não jogou (timeout ou desconexão).
+// Retorna true quando, após o preenchimento, ambos os lances estão computados.
+func (a *PptArbiterComponent) Preencher(sala string, equipes ...string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	mem, exists := a.rodadas[key]
-	if !exists {
-		return &entities.PptStatusResponse{
-			Status:          entities.StatusAguardandoLances,
-			Rodada:          rodada,
-			EquipesEnviadas: []string{},
+	d, ok := a.disputas[sala]
+	if !ok {
+		return false
+	}
+	opcoes := []string{entities.LancePedra, entities.LancePapel, entities.LanceTesoura}
+	for _, eq := range equipes {
+		if _, jaJogou := d.lances[eq]; !jaJogou {
+			d.lances[eq] = opcoes[a.sorteador(len(opcoes))]
 		}
 	}
+	return len(d.lances) == 2
+}
 
-	if mem.Resultado != nil {
-		return &entities.PptStatusResponse{
-			Status: mem.Resultado.Status,
-			Rodada: rodada,
-		}
+// TemLance indica se a equipe já possui lance computado
+func (a *PptArbiterComponent) TemLance(sala, equipe string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	d, ok := a.disputas[sala]
+	if !ok {
+		return false
 	}
+	_, jaJogou := d.lances[equipe]
+	return jaJogou
+}
 
-	equipes := make([]string, 0, len(mem.Lances))
-	for _, l := range mem.Lances {
-		equipes = append(equipes, l.Equipe)
+// LanceDaEquipe devolve o lance sigiloso da equipe (uso exclusivo de rota autenticada da própria equipe)
+func (a *PptArbiterComponent) LanceDaEquipe(sala, equipe string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	d, ok := a.disputas[sala]
+	if !ok {
+		return ""
 	}
+	return d.lances[equipe]
+}
 
-	return &entities.PptStatusResponse{
-		Status:            entities.StatusAguardandoOponente,
-		Rodada:            rodada,
-		JogadoresEnviados: len(mem.Lances),
-		EquipesEnviadas:   equipes,
+// Arbitrar resolve o confronto com os lances computados de ambas as equipes
+func (a *PptArbiterComponent) Arbitrar(sala string) (*entities.PptResultResponse, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	d, ok := a.disputas[sala]
+	if !ok || len(d.lances) < 2 {
+		return nil, ErrDisputaInexistente
 	}
+	lanceA := d.lances[entities.EquipePato]
+	lanceB := d.lances[entities.EquipeGanso]
+	resultado, vencedor := DecidirPpt(lanceA, lanceB)
+	return &entities.PptResultResponse{
+		Resultado: resultado,
+		Vencedor:  vencedor,
+		Lances:    map[string]string{entities.EquipePato: lanceA, entities.EquipeGanso: lanceB},
+	}, nil
+}
+
+// DecidirPpt aplica as regras clássicas de Pedra, Papel e Tesoura.
+// Retorna o slug do resultado e a equipe vencedora (vazia em caso de empate).
+func DecidirPpt(lanceA, lanceB string) (string, string) {
+	if lanceA == lanceB {
+		return entities.PptResultadoEmpate, ""
+	}
+	venceA := (lanceA == entities.LancePedra && lanceB == entities.LanceTesoura) ||
+		(lanceA == entities.LancePapel && lanceB == entities.LancePedra) ||
+		(lanceA == entities.LanceTesoura && lanceB == entities.LancePapel)
+	if venceA {
+		return entities.PptResultadoVitoriaA, entities.EquipePato
+	}
+	return entities.PptResultadoVitoriaB, entities.EquipeGanso
 }

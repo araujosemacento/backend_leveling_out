@@ -53,42 +53,74 @@ func TestSecretTargetComponent(t *testing.T) {
 
 func TestPptArbiterComponent(t *testing.T) {
 	arbiter := components.NewPptArbiterComponent()
-	salaCodigo := "TEST_SALA"
-	rodada := 1
+	sala := "TEST_SALA"
+	arbiter.Abrir(sala, "repA", "repB")
 
-	// 1. Lance da Equipe Pato (A)
-	res1, resolved1, err1 := arbiter.SubmitMove(entities.PptMoveRequest{
-		SalaCodigo: salaCodigo,
-		PlayerID:   "player1",
-		Equipe:     entities.EquipePato,
-		Lance:      entities.LancePedra,
-		Rodada:     rodada,
-	})
-	if err1 != nil {
-		t.Fatalf("SubmitMove erro: %v", err1)
+	// Apenas o representante da equipe pode jogar
+	if _, err := arbiter.SubmitMove(sala, "intruso", entities.EquipePato, entities.LancePedra); err != components.ErrNaoRepresentante {
+		t.Fatalf("esperado ErrNaoRepresentante, recebido %v", err)
 	}
-	if resolved1 {
-		t.Errorf("Rodada não deveria ser resolvida com apenas 1 lance")
-	}
-	if res1.Status != entities.StatusAguardandoOponente {
-		t.Errorf("Status esperado %s, recebido %s", entities.StatusAguardandoOponente, res1.Status)
+	if _, err := arbiter.SubmitMove(sala, "repA", entities.EquipePato, "lagarto"); err != components.ErrLanceInvalido {
+		t.Fatalf("esperado ErrLanceInvalido, recebido %v", err)
 	}
 
-	// 2. Lance da Equipe Ganso (B) - Tesoura contra Pedra -> Vitória de Pato (A)
-	res2, resolved2, err2 := arbiter.SubmitMove(entities.PptMoveRequest{
-		SalaCodigo: salaCodigo,
-		PlayerID:   "player2",
-		Equipe:     entities.EquipeGanso,
-		Lance:      entities.LanceTesoura,
-		Rodada:     rodada,
-	})
-	if err2 != nil {
-		t.Fatalf("SubmitMove erro: %v", err2)
+	// 1. Lance da Equipe Pato
+	pronto, err := arbiter.SubmitMove(sala, "repA", entities.EquipePato, entities.LancePedra)
+	if err != nil || pronto {
+		t.Fatalf("primeiro lance: pronto=%v err=%v", pronto, err)
 	}
-	if !resolved2 {
-		t.Errorf("Rodada deveria ter sido resolvida com 2 lances")
+
+	// Lance definitivo: não permite troca
+	if _, err := arbiter.SubmitMove(sala, "repA", entities.EquipePato, entities.LanceTesoura); err != components.ErrLanceDefinitivo {
+		t.Fatalf("esperado ErrLanceDefinitivo, recebido %v", err)
 	}
-	if res2.Vencedor != entities.EquipePato {
-		t.Errorf("Vencedor esperado %s, recebido %s", entities.EquipePato, res2.Vencedor)
+	if got := arbiter.LanceDaEquipe(sala, entities.EquipePato); got != entities.LancePedra {
+		t.Errorf("lance da equipe alterado: %s", got)
+	}
+
+	// 2. Lance da Equipe Ganso: tesoura contra pedra, vitória de Pato
+	pronto, err = arbiter.SubmitMove(sala, "repB", entities.EquipeGanso, entities.LanceTesoura)
+	if err != nil || !pronto {
+		t.Fatalf("segundo lance: pronto=%v err=%v", pronto, err)
+	}
+	res, err := arbiter.Arbitrar(sala)
+	if err != nil {
+		t.Fatalf("Arbitrar erro: %v", err)
+	}
+	if res.Vencedor != entities.EquipePato || res.Resultado != entities.PptResultadoVitoriaA {
+		t.Errorf("vencedor esperado Pato, recebido %s/%s", res.Vencedor, res.Resultado)
+	}
+}
+
+func TestPptArbiterPreencherTimeout(t *testing.T) {
+	arbiter := components.NewPptArbiterComponent()
+	sala := "TIMEOUT"
+	arbiter.Abrir(sala, "repA", "repB")
+
+	_, _ = arbiter.SubmitMove(sala, "repA", entities.EquipePato, entities.LancePapel)
+	if !arbiter.Preencher(sala, entities.EquipePato, entities.EquipeGanso) {
+		t.Fatal("preenchimento deveria completar a disputa")
+	}
+	if got := arbiter.LanceDaEquipe(sala, entities.EquipePato); got != entities.LancePapel {
+		t.Errorf("preenchimento não deve sobrescrever lance existente, recebido %s", got)
+	}
+	if !entities.LanceValido(arbiter.LanceDaEquipe(sala, entities.EquipeGanso)) {
+		t.Error("lance sorteado deve ser válido")
+	}
+}
+
+func TestDecidirPpt(t *testing.T) {
+	cases := []struct{ a, b, resultado, vencedor string }{
+		{entities.LancePedra, entities.LancePedra, entities.PptResultadoEmpate, ""},
+		{entities.LancePedra, entities.LanceTesoura, entities.PptResultadoVitoriaA, entities.EquipePato},
+		{entities.LancePapel, entities.LancePedra, entities.PptResultadoVitoriaA, entities.EquipePato},
+		{entities.LanceTesoura, entities.LancePapel, entities.PptResultadoVitoriaA, entities.EquipePato},
+		{entities.LanceTesoura, entities.LancePedra, entities.PptResultadoVitoriaB, entities.EquipeGanso},
+	}
+	for _, c := range cases {
+		r, v := components.DecidirPpt(c.a, c.b)
+		if r != c.resultado || v != c.vencedor {
+			t.Errorf("DecidirPpt(%s,%s) = %s/%s; want %s/%s", c.a, c.b, r, v, c.resultado, c.vencedor)
+		}
 	}
 }
