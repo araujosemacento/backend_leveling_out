@@ -1,67 +1,64 @@
-# Leveling Out: Backend Realtime Autohospedado
+# Leveling Out: Servidor Realtime Go Nativo em Memória
 
-Este diretório contém o servidor em tempo real e as regras de domínio para o jogo **Leveling Out**, construído sobre o **PocketBase** (binário compilado em Go com SQLite embarcado).
+Este diretório contém o servidor em tempo real e a autoridade de regras de jogo para o multiplayer **Leveling Out**, construído em **Go nativo puro** sob o padrão de **Ator em Memória** (`RoomActor`) e comunicação bidirecional de alta frequência via **WebSockets**.
 
 ---
 
-## 1. Princípios de Design
+## 1. Princípios de Engenharia
 
-- **Efêmero por Definição:** Nenhuma informação persiste além do ciclo de vida da sala ativa. Usuários são anônimos (sem contas, senhas ou e-mails).
-- **Higienização Automática:** O componente nativo autoritativo `CleanupComponent` purga periodicamente salas e registros sem atividade após 15 minutos via cron interno, impedindo acúmulo de dados no disco.
-- **Exposição Segura via Túnel Reverso:** O backend roda localmente e é exposto com terminação TLS automática via **Tailscale Funnel** ou **Cloudflare Tunnel**.
+- **Estado 100% Efêmero em RAM:** Nenhuma informação persiste em disco ou banco de dados relacional. Cada sala é uma goroutine independente gerenciando seu estado isolado em memória com canal serializador (`inbox chan RoomMessage`), eliminando condições de corrida e latências de I/O.
+- **Transmissão Bidirecional Full-Duplex:** Conexão persistente WebSocket (`/ws/salas/{codigo}`) com protocolo tipado de mensagens, suportando streaming contínuo do slider analógico em tempo real (30-60 Hz).
+- **Consumo Mínimo de Recursos:** O processo completo opera entre **12 MB e 25 MB de RAM**, permitindo execução contínua em servidores modestos sem sobrecarga de heap.
+- **Anonimato e Zero Trust:** Participantes anônimos identificados por UUID local e autenticados por `sessionToken` volátil em memória. A `meta_oculta` do tubo é blindada pelo servidor e omitida dos broadcasts até a fase de revelação oficial.
+- **Portabilidade Estática:** Compilado estaticamente com `CGO_ENABLED=0`, sem dependências externas de runtime C ou interpretadores.
 
 ---
 
 ## 2. Início Rápido
 
-### Opção A: Executar a partir dos Binários Oficiais (GitHub Releases)
+### Compilação a partir do Código Fonte
 
-Baixe o executável pré-compilado para seu sistema operacional (Linux, macOS ou Windows) na aba de [Releases do Repositório](https://github.com/araujosemacento/backend_leveling_out/releases).
-
-Descompacte e execute:
-
-```bash
-# No Linux ou macOS:
-./leveling-out-server serve --http="127.0.0.1:8090"
-
-# No Windows:
-leveling-out-server.exe serve --http="127.0.0.1:8090"
-```
-
-### Opção B: Compilar a partir do Código Fonte em Go
-
-Com o Go 1.24+ instalado:
+Requer Go 1.24+ instalado:
 
 ```bash
 # Executar a suíte de testes unitários do backend
-go test -v ./internal/components/...
+go test -v ./internal/...
 
 # Compilar o binário autossuficiente
 go build -o leveling-out-server ./cmd/server
 
 # Iniciar o servidor
-./leveling-out-server serve --http="127.0.0.1:8090"
+./leveling-out-server
 ```
 
-O esquema de banco de dados (`pb_schema.json`) é embarcado diretamente no executável via `//go:embed` e inicializado automaticamente na primeira execução, sem necessidade de configuração manual.
+Por padrão, o servidor escuta em `0.0.0.0:8090` e disponibiliza:
 
-O servidor inicializará e exibirá as URLs:
-
-- **API REST / SSE:** `http://127.0.0.1:8090/api/`
-- **Painel Administrativo:** `http://127.0.0.1:8090/_/`
-
-### Acesso ao Painel Administrativo
-
-Ao abrir o painel administrativo (`http://127.0.0.1:8090/_/`) pela primeira vez:
-
-1. Crie sua conta de administrador local (usada exclusivamente para inspecionar registros e conexões);
-2. As coleções `salas`, `rodadas` e `jogadores` já estarão criadas e configuradas automaticamente pelo auto-bootstrap nativo do servidor.
+- **Endpoint WebSocket:** `ws://127.0.0.1:8090/ws/salas/{codigo}`
+- **Health Check HTTP:** `http://127.0.0.1:8090/health`
 
 ---
 
-## 3. Exposição para a Internet (Túnel Reverso)
+## 3. Variáveis de Ambiente
 
-Para que amigos e dispositivos em redes móveis (4G/5G) consigam se conectar:
+O servidor pode ser configurado através de variáveis de ambiente:
+
+| Variável         | Padrão | Descrição                                                                                               |
+| :--------------- | :----- | :------------------------------------------------------------------------------------------------------ |
+| `PORT`           | `8090` | Porta TCP em que o servidor HTTP/WebSocket escuta.                                                      |
+| `ALLOWED_ORIGIN` | `*`    | Origem autorizada no CORS para conexão de navegadores (ex.: `https://meujogo.com`).                     |
+| `PROXY_SECRET`   | `""`   | Segredo de infraestrutura para validar conexões encaminhadas por túneis reversos ou proxies Cloudflare. |
+
+Exemplo de execução configurada:
+
+```bash
+PORT=8090 ALLOWED_ORIGIN="http://localhost:5173" ./leveling-out-server
+```
+
+---
+
+## 4. Exposição para a Internet (Túnel Reverso)
+
+Para permitir que participantes em redes externas ou dispositivos móveis (4G/5G) ingressem na partida:
 
 ### Opção A: Tailscale Funnel (Recomendado se já usa Tailscale)
 
@@ -69,8 +66,8 @@ Para que amigos e dispositivos em redes móveis (4G/5G) consigam se conectar:
 tailscale funnel 8090
 ```
 
-Seu servidor ficará acessível publicamente com HTTPS em:
-`https://sua-maquina.seu-tailnet.ts.net/api/`
+Seu servidor ficará acessível publicamente com terminação TLS em:
+`wss://sua-maquina.seu-tailnet.ts.net/ws/salas/{codigo}`
 
 ### Opção B: Cloudflare Tunnel (cloudflared)
 
@@ -78,66 +75,34 @@ Seu servidor ficará acessível publicamente com HTTPS em:
 cloudflared tunnel --url http://127.0.0.1:8090
 ```
 
-A Cloudflare fornecerá uma URL temporária gratuita (ou atrelada a seu domínio próprio) com HTTPS válido.
-
 ---
 
-## 4. Executando em Segundo Plano (Indefinidamente)
+## 5. Executando em Segundo Plano (systemd no Linux)
 
-Para manter o PocketBase rodando na sua máquina mesmo após fechar o terminal:
-
-### Via `systemd` (Linux)
-
-Crie `/etc/systemd/system/pocketbase-levelingout.service`:
+Crie o arquivo `/etc/systemd/system/leveling-out.service`:
 
 ```ini
 [Unit]
-Description=PocketBase Leveling Out Server
+Description=Leveling Out Realtime Go Server
 After=network.target
 
 [Service]
 Type=simple
 User=melo
-WorkingDirectory=/home/melo/Documentos/GitHub/portfolio_programacao_jogos/backend
-ExecStart=/home/melo/Documentos/GitHub/portfolio_programacao_jogos/backend/pocketbase serve --http=127.0.0.1:8090
-Restart=on-failure
-RestartSec=5s
+WorkingDirectory=/home/melo/Documentos/GitHub/leveling_out/backend
+ExecStart=/home/melo/Documentos/GitHub/leveling_out/backend/leveling-out-server
+Restart=always
+RestartSec=3
+Environment=PORT=8090
+Environment=ALLOWED_ORIGIN=*
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Ative e inicialize:
+Ative e inicie o serviço:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now pocketbase-levelingout.service
-```
-
----
-
-## 5. Estrutura de Arquivos
-
-```text
-backend/
-├── cmd/
-│   └── server/main.go         <-- Ponto de entrada do servidor PocketBase estendido
-├── internal/
-│   ├── components/            <-- ProximityComponent, SecretTargetComponent, PptArbiter, Cleanup
-│   │   └── components_test.go <-- Testes unitários com verificação de corrida
-│   ├── entities/              <-- EntidadeSessao, EntidadeParticipante e EntidadeDisputa
-│   ├── hooks/                 <-- Registro de hooks autoritativos e endpoints dedicados
-│   └── schema/
-│       ├── pb_schema.json     <-- Esquema declarativo das coleções do PocketBase
-│       └── schema.go          <-- Auto-bootstrap de coleções via //go:embed
-├── scripts/
-│   └── start_tunnel.sh        <-- Script utilitário para túnel reverso
-├── .github/workflows/
-│   └── release.yml            <-- Pipeline CI/CD de compilação cruzada estática
-├── AGENTS.md                  <-- Guia canônico para agentes autônomos de IA
-├── CHANGELOG.md               <-- Histórico formal de versões (Keep a Changelog)
-├── CONTRACT.md                <-- Especificação de API, modelos de dados e rotas SSE
-├── README.md                  <-- Este guia
-├── go.mod / go.sum            <-- Módulos e dependências em Go
-└── .gitignore                 <-- Proteção contra commit de dados de runtime
+sudo systemctl enable --now leveling-out
 ```

@@ -24,109 +24,108 @@ Este documento é a fonte primária de verdade e instrução para qualquer desen
 
 ### Fase 1: Onboarding, Sala e Decisão de Turno
 
-Os jogadores acessam a plataforma via navegador estático e entram em uma sala compartilhada via código de sala (`codigo`). Na sala, os participantes são distribuídos em duas equipes (**Equipe Pato / A** e **Equipe Ganso / B**) ou alocados como indecisos (`ALEATORIO`). O criador da sala é designado como anfitrião (`is_host`), possuindo a prerrogativa autoritativa de moderação para remover participantes indesejados (`POST /api/leveling/salas/{codigo}/expulsar`) e iniciar a partida após o preenchimento de todas as 4 vagas da sala. Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os capitães das equipes. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
+Os jogadores conectam-se via WebSocket na rota `/ws/salas/{codigo}`. Na sala, os participantes são distribuídos em duas equipes (**Equipe Pato / A** e **Equipe Ganso / B**) ou alocados como indecisos (`ALEATORIO`). O criador da sala é designado como anfitrião (`isHost`), possuindo a prerrogativa autoritativa de moderação para remover participantes indesejados (`EXPULSAR_JOGADOR`) e iniciar a partida após o preenchimento de todas as 4 vagas da sala (`INICIAR_PARTIDA`). Para definir quem começa, o sistema dispara um minijogo sincronizado de **Pedra, Papel e Tesoura** entre os representantes das equipes com limite de 10 segundos. A equipe vencedora ganha o direito de iniciar e seleciona o espectro conceitual da primeira rodada.
 
 ### Fase 2: O Core Loop da Rodada (Dica, Palpite e Revelação)
 
-1. O backend cria um registro na coleção `rodadas` para a rodada ativa da sala e define os papéis da equipe da vez.
-2. É sorteada automaticamente uma `meta_oculta` (inteiro entre 5 e 95) armazenada no registro de `rodadas`.
-3. O Codificador formula e envia uma `dica` textual.
-4. Ao receber a dica via SSE, o Palpiteiro move o slider e confirma seu `palpite` (0 a 100).
-5. Ocorre a **revelação simultânea**: o hook calcula a distância absoluta entre `meta_oculta` e `palpite`, computa os pontos conquistados na coleção `rodadas` e atualiza o placar macro da sala (`placar_a` ou `placar_b`).
+1. O ator da sala instancia a rodada ativa na memória (`RodadaAtiva`) e define os papéis da equipe da vez.
+2. É sorteada automaticamente uma `meta_oculta` (inteiro criptográfico entre 5 e 95) via `SecretTargetComponent`.
+3. O Codificador formula e envia uma dica textual sanitizada (`SUBMETER_DICA`).
+4. Ao receber a dica via broadcast `SYNC`, o Palpiteiro move o slider analógico (transmitindo `SLIDER_MOVER` para visualização em tempo real) e confirma seu `palpite` definitivo (0 a 100).
+5. Ocorre a **revelação simultânea**: o ator calcula a distância absoluta entre `meta_oculta` e `palpite`, computa os pontos conquistados via `ProximityComponent`, atualiza o placar macro da sala (`placarA` ou `placarB`) e inicia contagem regressiva para o próximo turno.
 
 ### Fase 3: Progressão, Alternância e Conclusão com Revanche
 
-Os turnos alternam estritamente entre as equipes. A partida segue até que uma das equipes atinja a pontuação máxima estipulada (ex.: 10 pontos). Ao atingir a meta, a fase muda para `FIM_JOGO`, exibindo a tela de vitória com métricas de sintonia da partida baseadas no histórico de `rodadas`. A sala oferece opções para disparar uma **Revanche** (mantendo equipes e zerando o placar) ou retornar ao lobby.
+Os turnos alternam estritamente entre as equipes. A partida segue até que uma das equipes atinja a pontuação máxima estipulada (10 pontos). Ao atingir a meta, a fase muda para `VITORIA`, exibindo a tela de celebração com métricas de sintonia da partida baseadas no histórico de rodadas em memória. A sala oferece opção de **Revanche** (`REVANCHE`), mantendo equipes e zerando o placar.
 
 ---
 
 ## 3. Arquitetura do Backend e Filosofia de Design
 
-O backend e fundamentado no **PocketBase** estendido diretamente como framework em Go (`github.com/pocketbase/pocketbase`), gerando um unico binario executavel nativo com SQLite embutido via `modernc.org/sqlite` (`CGO_ENABLED=0`).
+O backend é construído em **Go nativo puro** (`CGO_ENABLED=0`), estruturado sob o padrão de **Ator em Memória** (`RoomActor`) e comunicação bidirecional de baixa latência via **WebSockets**.
 
 ### Diretrizes Centrais Inegociáveis
 
-1. **Consumo Minimo de Recursos:**
-   - O processo deve operar entre **15 MB e 30 MB de RAM**, permitindo execucao continua em servidores modestos ou maquinas de desenvolvimento sem sobrecarga de heap.
-2. **Anonimato e Ausencia de Contas:**
-   - **NAO** crie tabelas de usuarios permanentes, senhas ou sistemas de OAuth.
-   - Cada participante e identificado exclusivamente por um `player_id` (UUID efemero mantido no cliente).
-3. **Efemeridade e Higienizacao Automatica:**
-   - O banco SQLite nao retem partidas passadas.
-   - O `CleanupComponent` e executado periodicamente a cada 5 minutos via agendador nativo do PocketBase, purgando jogadores inativos ha mais de 1 minuto e salas inativas ha mais de 5 minutos.
-4. **Comunicação em Tempo Real Desacoplada:**
-   - O front-end conecta-se via **Server-Sent Events (SSE)** nativo do PocketBase, escutando `salas`, `rodadas` e `jogadores`.
-5. **Conectividade Externa via Tunel Reverso:**
-   - O servidor escuta em `127.0.0.1:8090` e e exposto publicamente por **Tailscale Funnel** ou **Cloudflare Tunnel**, fornecendo terminacao TLS automatica.
-6. **Composicao por Entidades e Componentes Atomicos:**
-   - O backend e o arbitro autoritativo do sistema distribuido:
-     - `EntidadeSessao` (`internal/entities/session.go`): salas e rodadas ativas.
-     - `EntidadeParticipante` (`internal/entities/participant.go`): jogadores e equipes Pato e Ganso.
-     - `EntidadeDisputa` (`internal/entities/contest.go`): lances e resolucoes de confrontos.
-     - `ProximityComponent` (`internal/components/proximity.go`): algoritmo matematico de pontuacao por tolerancia.
-     - `SecretTargetComponent` (`internal/components/secret_target.go`): segredo seguro [5, 95] com `crypto/rand`.
-     - `PptArbiterComponent` (`internal/components/ppt_arbiter.go`): arbitragem concorrente thread-safe (`sync.RWMutex`).
-     - `CleanupComponent` (`internal/components/cleanup.go`): purga automatizada em segundo plano.
+1. **Estado 100% em Memória RAM (Actor Pattern):**
+   - Cada sala é uma goroutine independente gerenciando seu estado isolado em memória.
+   - Toda comunicação com a sala passa por um canal serializador (`inbox chan RoomMessage`), eliminando condições de corrida sem travas de banco ou overhead de disco.
+2. **Consumo Mínimo de Recursos:**
+   - O processo completo opera entre **12 MB e 25 MB de RAM**, permitindo execução contínua em servidores modestos sem sobrecarga de heap.
+3. **Anonimato e Ausência de Contas:**
+   - **NÃO** crie tabelas permanentes de usuários, senhas ou sistemas de OAuth.
+   - Cada participante é identificado por um `playerId` (UUID gerado no navegador) e autenticado por `sessionToken` volátil em memória.
+4. **Efemeridade e Higienização Automática:**
+   - Não há persistência relacional em disco. Salas inativas são encerradas automaticamente e recicladas pelo Garbage Collector do Go.
+5. **Comunicação em Tempo Real Bidirecional:**
+   - Conexão WebSocket unificada com frames JSON tipados (`internal/protocol/messages.go`), suportando streaming contínuo do slider (30-60 Hz).
+6. **Composição por Entidades e Componentes Atômicos:**
+   - `EntidadeSessao` (`internal/entities/session.go`): salas e rodadas ativas.
+   - `EntidadeParticipante` (`internal/entities/participant.go`): jogadores e equipes Pato e Ganso.
+   - `EntidadeDisputa` (`internal/entities/contest.go`): confrontos e lances de PPT.
+   - `ProximityComponent` (`internal/components/proximity.go`): algoritmo matemático de pontuação por tolerância.
+   - `SecretTargetComponent` (`internal/components/secret_target.go`): segredo seguro [5, 95] com `crypto/rand`.
+   - `PptArbiterComponent` (`internal/components/ppt_arbiter.go`): arbitragem determinística de PPT e preenchimento por timeout.
+   - `SpectrumsComponent` (`internal/components/spectrums.go`): catálogo de 15 cartas bipolares e sorteio de opções.
 7. **Proibição de Commits e Pushes Autônomos:**
    - Agentes de IA são expressamente proibidos de executar `git commit`, `git tag` ou `git push` de forma autônoma.
    - O agente deve unicamente fornecer o sumário estruturado, a descrição detalhada e o comando git sugerido pronto para que o desenvolvedor humano realize a ação manualmente.
 
 ---
 
-## 4. Estrutura do Repositorio e Papeis dos Arquivos
+## 4. Estrutura do Repositório e Papéis dos Arquivos
 
 ```text
 backend/
 ├── cmd/
-│   └── server/main.go               <-- Ponto de entrada do executavel PocketBase estendido
+│   └── server/main.go               <-- Ponto de entrada do servidor nativo HTTP/WebSocket
 ├── internal/
+│   ├── actor/                       <-- Padrão de Ator para gerência de salas em memória
+│   │   ├── room_actor.go            <-- Goroutine autônoma por sala, inbox chan, timers e Zero Trust
+│   │   ├── client_conn.go           <-- Conexão thread-safe de escrita/leitura sobre WebSocket
+│   │   └── actor_test.go            <-- Testes unitários do ciclo de vida e projeções
+│   ├── hub/
+│   │   └── lobby_hub.go             <-- Hub central thread-safe de salas ativas em memória
+│   ├── protocol/
+│   │   └── messages.go              <-- Contratos tipados de entrada e envelopes de saída
 │   ├── entities/                    <-- EntidadeSessao, EntidadeParticipante e EntidadeDisputa
-│   ├── components/                  <-- ProximityComponent, SecretTargetComponent, PptArbiter, Cleanup
-│   │   └── components_test.go       <-- Testes unitarios Go com detector de condicoes de corrida
-│   ├── hooks/                       <-- Modulos de hooks e rotas autoritativas
-│   │   ├── register.go              <-- Orquestrador principal de registro
-│   │   ├── lifecycle.go             <-- Hooks de ciclo de vida das colecoes salas, rodadas e jogadores
-│   │   ├── routes_lobby.go          <-- Rotas HTTP de handshake, presenca, equipe, moderacao/expulsao e dissolucao
-│   │   ├── routes_ppt.go            <-- Rotas de lances e consulta de PPT
-│   │   ├── routes_match.go          <-- Rotas de inicio de partida e snapshot SQL-Generated JSON
-│   │   ├── cron.go                  <-- Agendamento de crons periodicos de higienizacao
-│   │   └── utils.go                 <-- Utilitarios de token criptografico, sanitizacao e queries SQL
-│   └── schema/
-│       ├── pb_schema.json           <-- Esquema declarativo de colecoes embarcado via //go:embed
-│       └── schema.go                <-- Auto-bootstrap e inicializacao das colecoes
+│   │   ├── session.go               <-- SalaEstado, RodadaAtiva, RodadaResumo
+│   │   ├── participant.go           <-- Jogador, projeção individual e papéis
+│   │   └── contest.go               <-- PptContestState e lances
+│   └── components/                  <-- Componentes atômicos autoritativos
+│       ├── proximity.go             <-- Regra matemática de proximidade (+4, +3, +2, 0)
+│       ├── secret_target.go         <-- Sorteio criptográfico seguro da meta oculta
+│       ├── ppt_arbiter.go           <-- Arbitragem determinística de Pedra, Papel e Tesoura
+│       ├── spectrums.go             <-- Catálogo de cartas de espectro e sorteio
+│       └── components_test.go       <-- Testes unitários com verificação de corrida (-race)
 ├── scripts/
-│   └── start_tunnel.sh              <-- Script utilitario de tunel reverso (Tailscale / Cloudflare)
-├── .github/workflows/
-│   └── release.yml                  <-- Pipeline de compilacao cruzada e releases no GitHub
-├── CHANGELOG.md                     <-- Registro formal de versoes (Keep a Changelog)
-├── CONTRACT.md                      <-- Especificacao de contratos REST, rotas e payloads
-├── README.md                        <-- Instrucoes de compilacao, execucao e operacao
+│   └── start_tunnel.sh              <-- Script utilitário de túnel reverso (Tailscale / Cloudflare)
+├── CONTRACT.md                      <-- Especificação formal do protocolo WebSocket e payloads
+├── README.md                        <-- Instruções de compilação, execução e operação
 ├── AGENTS.md                        <-- Este documento (fonte de verdade para agentes de IA)
-├── go.mod / go.sum                  <-- Modulos e dependencias de compilacao Go
-├── .env.example                     <-- Modelo de variaveis de ambiente
-└── .gitignore                       <-- Bloqueio de artefatos de build e banco local
+├── go.mod / go.sum                  <-- Módulos e dependências de compilação Go
+└── .gitignore                       <-- Bloqueio de artefatos de build locais
 ```
 
 ---
 
-## 5. Padroes de Desenvolvimento em Go Nativo
+## 5. Padrões de Desenvolvimento em Go Nativo
 
-- **Zero CGO:** Toda compilacao deve manter `CGO_ENABLED=0`, garantindo portabilidade estatica absoluta entre Linux, macOS e Windows.
-- **Concorrencia Segura:** Nunca compartilhe estado mutavel entre requisicoes sem sincronizacao nativa (`sync.RWMutex`, `sync.Map` ou canais).
-- **Zero-Copy Pass-Through (SQL-Generated JSON):** Para consultas agregadas de alta performance (`/api/leveling/salas/{codigo}/snapshot`), utilize `json_object` e `json_group_array` diretamente no SQLite, repassando os bytes ao socket HTTP sem instanciar structs intermediarias ou invocar reflexao dinamica.
-- **Auto-Bootstrap:** Colecoes essenciais devem ser garantidas no evento `OnBootstrap` a partir de `pb_schema.json` embarcado via `//go:embed`.
+- **Zero CGO:** Toda compilação mantém `CGO_ENABLED=0`, garantindo portabilidade estática absoluta entre Linux, macOS e Windows.
+- **Concorrência Segura via Actor Pattern:** Nunca compartilhe estado mutável entre requisições. Todas as ações de uma sala transitam pelo canal `inbox` do respectivo `RoomActor`.
+- **Zero I/O de Disco no Gameplay:** Operação 100% in-memory, eliminando gargalos de latência de escrita em disco.
+- **Buffers de Escrita Assíncronos:** Cada conexão `ClientConn` possui canal interno de escrita, impedindo que conexões lentas de clientes degradem a performance da sala.
 
 ---
 
-## 6. Comandos e Testes de Validacao
+## 6. Comandos e Testes de Validação
 
-### Executar a suite de testes unitarios com verificacao de corrida
+### Executar a suíte de testes unitários do backend com detector de corrida
 
 ```bash
-go test -v -race ./internal/components/...
+go test -v -race ./internal/...
 ```
 
-### Compilar o executavel do servidor localmente
+### Compilar o executável do servidor localmente
 
 ```bash
 go build -o leveling-out-server ./cmd/server
@@ -135,17 +134,11 @@ go build -o leveling-out-server ./cmd/server
 ### Iniciar o servidor
 
 ```bash
-./leveling-out-server serve --http="127.0.0.1:8090"
+./leveling-out-server
 ```
 
-### Testando a saude da API
+### Testando a saúde da API
 
 ```bash
-curl -I http://127.0.0.1:8090/api/health
-```
-
-### Snapshot de alto desempenho via SQL-Generated JSON
-
-```bash
-curl -X GET "http://127.0.0.1:8090/api/leveling/salas/SALA_EXEMPLO/snapshot"
+curl -I http://127.0.0.1:8090/health
 ```

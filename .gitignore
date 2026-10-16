@@ -2,6 +2,7 @@
 pb_data/
 
 # Local binary
+bin/
 pocketbase
 pocketbase.exe
 leveling-out-server
