@@ -36,7 +36,7 @@ func (r *RoomActor) handleIniciarPartida(playerID string) {
 	r.estado.Fase = entities.FaseIniciativa
 	r.estado.Ppt = entities.PptContestState{
 		Estado:         "ESCOLHA",
-		Prazo:          time.Now().Add(10 * time.Second),
+		Prazo:          time.Now().Add(20 * time.Second),
 		RepresentanteA: repA,
 		RepresentanteB: repB,
 	}
@@ -185,7 +185,7 @@ func (r *RoomActor) handleRevanche(_ string) {
 	r.estado.Fase = entities.FaseIniciativa
 	r.estado.Ppt = entities.PptContestState{
 		Estado:         "ESCOLHA",
-		Prazo:          time.Now().Add(10 * time.Second),
+		Prazo:          time.Now().Add(20 * time.Second),
 		RepresentanteA: repA,
 		RepresentanteB: repB,
 	}

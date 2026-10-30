@@ -78,7 +78,7 @@ func (r *RoomActor) processarTicksTemporais() {
 		}
 	}
 
-	// 1. Timeout de 10 segundos no PPT (sorteia lance por quem não jogou)
+	// 1. Timeout de 20 segundos no PPT (sorteia lance por quem não jogou)
 	if r.estado.Fase == entities.FaseIniciativa && r.estado.Ppt.Estado == "ESCOLHA" {
 		if now.After(r.estado.Ppt.Prazo) {
 			r.pptArbiter.Preencher(r.codigo, entities.EquipePato, entities.EquipeGanso)
@@ -100,11 +100,11 @@ func (r *RoomActor) processarTicksTemporais() {
 				r.estado.Ppt.LanceB = res.Lances[entities.EquipeGanso]
 
 				if res.Resultado == entities.PptResultadoEmpate {
-					r.timerTransicao = now.Add(2500 * time.Millisecond)
+					r.timerTransicao = now.Add(3500 * time.Millisecond)
 					r.acaoTransicao = "REINICIAR_PPT_EMPATE"
 				} else {
 					r.estado.EquipeAtiva = res.Vencedor
-					r.timerTransicao = now.Add(4 * time.Second)
+					r.timerTransicao = now.Add(4500 * time.Millisecond)
 					r.acaoTransicao = "INICIAR_PRIMEIRA_RODADA"
 				}
 				r.broadcastZeroTrust()
@@ -125,7 +125,7 @@ func (r *RoomActor) processarTicksTemporais() {
 			repB := r.estado.Ppt.RepresentanteB
 			r.estado.Ppt = entities.PptContestState{
 				Estado:         "ESCOLHA",
-				Prazo:          now.Add(10 * time.Second),
+				Prazo:          now.Add(20 * time.Second),
 				RepresentanteA: repA,
 				RepresentanteB: repB,
 			}
