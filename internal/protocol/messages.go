@@ -9,9 +9,11 @@ const (
 	TipoExpulsarJogador  = "EXPULSAR_JOGADOR"
 	TipoBanirJogador     = "BANIR_JOGADOR"
 	TipoDesfazerPartida  = "DESFAZER_PARTIDA"
-	TipoLancePpt         = "LANCE_PPT"
-	TipoEscolherEspectro = "ESCOLHER_ESPECTRO"
-	TipoSubmeterDica     = "SUBMETER_DICA"
+	TipoLancePpt            = "LANCE_PPT"
+	TipoEscolherEspectro    = "ESCOLHER_ESPECTRO"
+	TipoPreSelecionarEspectro = "PRE_SELECIONAR_ESPECTRO"
+	TipoVotarEspectro       = "VOTAR_ESPECTRO"
+	TipoSubmeterDica        = "SUBMETER_DICA"
 	TipoSliderMover      = "SLIDER_MOVER"
 	TipoConfirmarPalpite = "CONFIRMAR_PALPITE"
 	TipoRevanche         = "REVANCHE"
@@ -54,11 +56,21 @@ type PayloadLancePpt struct {
 	Lance string `json:"lance"`
 }
 
-// PayloadEscolherEspectro decodifica a seleção do Codificador
+// PayloadEscolherEspectro decodifica a seleção do Líder
 type PayloadEscolherEspectro struct {
 	CartaID  string `json:"cartaId,omitempty"`
 	Esquerda string `json:"esquerda,omitempty"`
 	Direita  string `json:"direita,omitempty"`
+}
+
+// PayloadPreSelecionarEspectro decodifica a marcação prévia de carta pelo Líder da rodada
+type PayloadPreSelecionarEspectro struct {
+	CartaID string `json:"cartaId"`
+}
+
+// PayloadVotarEspectro decodifica o voto/sugestão de carta pelo parceiro da equipe
+type PayloadVotarEspectro struct {
+	CartaID string `json:"cartaId"`
 }
 
 // PayloadSubmeterDica decodifica a pista textual do Codificador
@@ -115,18 +127,22 @@ type SnapshotPpt struct {
 
 // SnapshotRodada representa o estado da rodada ativa projetado
 type SnapshotRodada struct {
-	Numero           int     `json:"numero"`
-	Equipe           string  `json:"equipe"`
-	CodificadorID    string  `json:"codificadorId"`
-	PalpiteiroID     string  `json:"palpiteiroId"`
-	EspectroEsquerda string  `json:"espectroEsquerda,omitempty"`
-	EspectroDireita  string  `json:"espectroDireita,omitempty"`
-	MetaOculta       *int    `json:"metaOculta,omitempty"` // Nulo para quem não for Codificador até REVELACAO
-	Dica             string  `json:"dica,omitempty"`
-	Palpite          *int    `json:"palpite,omitempty"`
-	Pontos           int     `json:"pontos"`
-	Tier             string  `json:"tier,omitempty"`
-	Label            string  `json:"label,omitempty"`
+	Numero              int        `json:"numero"`
+	Equipe              string     `json:"equipe"`
+	CodificadorID       string     `json:"codificadorId"`
+	PalpiteiroID        string     `json:"palpiteiroId"`
+	LiderRodadaID       string     `json:"liderRodadaId,omitempty"`
+	CartaSelecionadaID  string     `json:"cartaSelecionadaId,omitempty"`
+	VotoParceiroCartaID string     `json:"votoParceiroCartaId,omitempty"`
+	PrazoEspectro       *time.Time `json:"prazoEspectro,omitempty"`
+	EspectroEsquerda    string     `json:"espectroEsquerda,omitempty"`
+	EspectroDireita     string     `json:"espectroDireita,omitempty"`
+	MetaOculta          *int       `json:"metaOculta,omitempty"` // Nulo para quem não for Codificador até REVELACAO
+	Dica                string     `json:"dica,omitempty"`
+	Palpite             *int       `json:"palpite,omitempty"`
+	Pontos              int        `json:"pontos"`
+	Tier                string     `json:"tier,omitempty"`
+	Label               string     `json:"label,omitempty"`
 }
 
 // SnapshotSalaProjetado é o modelo canônico de FULL_SYNC entregue ao GameEngine

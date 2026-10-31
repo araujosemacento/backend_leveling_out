@@ -89,6 +89,14 @@ func (r *RoomActor) processarTicksTemporais() {
 		}
 	}
 
+	// 1.5. Timeout de 30 segundos na Fase de Escolha de Espectro
+	if r.estado.Fase == entities.FaseRodadaEspectro && !r.estado.Rodada.PrazoEspectro.IsZero() {
+		if now.After(r.estado.Rodada.PrazoEspectro) {
+			r.resolverTimeoutEspectro()
+			return
+		}
+	}
+
 	// 2. Término da contagem regressiva 3..2..1..Já! do PPT
 	if r.estado.Fase == entities.FaseIniciativa && r.estado.Ppt.Estado == "CONTAGEM" {
 		if now.After(r.estado.Ppt.RevelacaoEm) {

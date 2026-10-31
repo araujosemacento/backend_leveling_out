@@ -35,21 +35,25 @@ type RodadaResumo struct {
 
 // RodadaAtiva armazena os dados da rodada que está sendo jogada no momento
 type RodadaAtiva struct {
-	Numero           int       `json:"numero"`
-	Equipe           string    `json:"equipe"`
-	CodificadorID    string    `json:"codificadorId"`
-	PalpiteiroID     string    `json:"palpiteiroId"`
-	EspectroEsquerda string    `json:"espectroEsquerda"`
-	EspectroDireita  string    `json:"espectroDireita"`
-	MetaOculta       int       `json:"metaOculta"` // Sigilosa até REVELACAO
-	Dica             string    `json:"dica"`
-	Palpite          int       `json:"palpite"`
-	SliderPosicao    float64   `json:"sliderPosicao"` // Streaming dinâmico do arrasto
-	Pontos           int       `json:"pontos"`
-	Tier             string    `json:"tier"`
-	Label            string    `json:"label"`
-	IniciadaEm       time.Time `json:"iniciadaEm"`
-	ReveladaEm       time.Time `json:"reveladaEm"`
+	Numero              int       `json:"numero"`
+	Equipe              string    `json:"equipe"`
+	CodificadorID       string    `json:"codificadorId"`
+	PalpiteiroID        string    `json:"palpiteiroId"`
+	LiderRodadaID       string    `json:"liderRodadaId,omitempty"`       // Líder incumbido de escolher o espectro
+	CartaSelecionadaID  string    `json:"cartaSelecionadaId,omitempty"`  // Carta pré-marcada pelo líder
+	VotoParceiroCartaID string    `json:"votoParceiroCartaId,omitempty"` // Carta votada pelo parceiro (mãozinha)
+	PrazoEspectro       time.Time `json:"prazoEspectro,omitempty"`       // Timeout de 30 segundos
+	EspectroEsquerda    string    `json:"espectroEsquerda"`
+	EspectroDireita     string    `json:"espectroDireita"`
+	MetaOculta          int       `json:"metaOculta"` // Sigilosa até REVELACAO
+	Dica                string    `json:"dica"`
+	Palpite             int       `json:"palpite"`
+	SliderPosicao       float64   `json:"sliderPosicao"` // Streaming dinâmico do arrasto
+	Pontos              int       `json:"pontos"`
+	Tier                string    `json:"tier"`
+	Label               string    `json:"label"`
+	IniciadaEm          time.Time `json:"iniciadaEm"`
+	ReveladaEm          time.Time `json:"reveladaEm"`
 }
 
 // SalaEstado representa a instância operacional viva em memória da macro-sessão de jogo

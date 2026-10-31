@@ -1,6 +1,7 @@
 package components_test
 
 import (
+	"fmt"
 	"testing"
 
 	"leveling-out-backend/internal/components"
@@ -122,5 +123,150 @@ func TestDecidirPpt(t *testing.T) {
 		if r != c.resultado || v != c.vencedor {
 			t.Errorf("DecidirPpt(%s,%s) = %s/%s; want %s/%s", c.a, c.b, r, v, c.resultado, c.vencedor)
 		}
+	}
+}
+
+func TestSpectrumsComponentKnuthShuffleAndDiscard(t *testing.T) {
+	spec := components.NewSpectrumsComponent()
+
+	if spec.TotalCatalogo() != 150 {
+		t.Fatalf("TotalCatalogo() = %d; want 150", spec.TotalCatalogo())
+	}
+	if spec.RestantesNoMonte() != 150 {
+		t.Fatalf("RestantesNoMonte() inicial = %d; want 150", spec.RestantesNoMonte())
+	}
+	if spec.TotalNoDescarte() != 0 {
+		t.Fatalf("TotalNoDescarte() inicial = %d; want 0", spec.TotalNoDescarte())
+	}
+
+	vistos := make(map[string]bool, 150)
+	porCategoria := make(map[string]int, 5)
+
+	// 75 sorteios de pares consomem exatamente todas as 150 cartas sem nenhuma repetição
+	for i := 0; i < 75; i++ {
+		c1, c2 := spec.SortearPar()
+		if c1.ID == c2.ID {
+			t.Fatalf("rodada %d: SortearPar retornou cartas idênticas (%s)", i+1, c1.ID)
+		}
+		if vistos[c1.ID] {
+			t.Fatalf("rodada %d: carta %s repetida antes de esgotar o baralho", i+1, c1.ID)
+		}
+		if vistos[c2.ID] {
+			t.Fatalf("rodada %d: carta %s repetida antes de esgotar o baralho", i+1, c2.ID)
+		}
+		vistos[c1.ID] = true
+		vistos[c2.ID] = true
+		porCategoria[c1.Categoria]++
+		porCategoria[c2.Categoria]++
+	}
+
+	if len(vistos) != 150 {
+		t.Fatalf("cartas únicas sorteadas = %d; want 150", len(vistos))
+	}
+	if spec.RestantesNoMonte() != 0 {
+		t.Fatalf("RestantesNoMonte() após 75 pares = %d; want 0", spec.RestantesNoMonte())
+	}
+	if spec.TotalNoDescarte() != 150 {
+		t.Fatalf("TotalNoDescarte() após 75 pares = %d; want 150", spec.TotalNoDescarte())
+	}
+
+	categoriasEsperadas := []string{
+		components.CategoriaSensorial,
+		components.CategoriaJuizoValor,
+		components.CategoriaComportamento,
+		components.CategoriaComplexidade,
+		components.CategoriaCulturaPop,
+	}
+	for _, cat := range categoriasEsperadas {
+		if porCategoria[cat] != 30 {
+			t.Errorf("categoria %q possui %d cartas; want 30", cat, porCategoria[cat])
+		}
+	}
+
+	// 76º sorteio deve reciclar a pilha de descarte e reembaralhar via Knuth Shuffle
+	c1, c2 := spec.SortearPar()
+	if c1.ID == c2.ID {
+		t.Fatalf("após reciclagem: SortearPar retornou cartas idênticas (%s)", c1.ID)
+	}
+	if spec.RestantesNoMonte() != 148 {
+		t.Fatalf("RestantesNoMonte() após reciclagem e 1 par = %d; want 148", spec.RestantesNoMonte())
+	}
+	if spec.TotalNoDescarte() != 2 {
+		t.Fatalf("TotalNoDescarte() após reciclagem e 1 par = %d; want 2", spec.TotalNoDescarte())
+	}
+
+	// Validação de cartas canônicas adicionadas / refinadas
+	cartasEsperadas := map[string]struct{ esq, dir string }{
+		"c29":  {"Insosso", "Salgado"},
+		"c51":  {"Marcante", "Insignificante"},
+		"c57":  {"Sucesso", "Fracasso"},
+		"c58":  {"Santo", "Profano"},
+		"c89":  {"Comida rotineira", "Manjar dos deuses"},
+		"c103": {"Acessível", "Inacessível"},
+		"c106": {"Amador", "Profissional"},
+		"c116": {"Concreto", "Abstrato"},
+		"c133": {"Sidequest", "Boss Battle"},
+		"c138": {"O Lado Puro da Força", "O Lado Negro da Força"},
+	}
+	for id, esp := range cartasEsperadas {
+		carta, achou := spec.ObterPorID(id)
+		if !achou {
+			t.Errorf("carta %s não encontrada no catálogo", id)
+			continue
+		}
+		if carta.Esquerda != esp.esq || carta.Direita != esp.dir {
+			t.Errorf("carta %s = %s / %s; want %s / %s", id, carta.Esquerda, carta.Direita, esp.esq, esp.dir)
+		}
+	}
+}
+
+func TestSpectrumsComponentIntegridadeECatalogoDefinitivo(t *testing.T) {
+	spec := components.NewSpectrumsComponent()
+
+	// 1. Testa busca por ID inexistente
+	if _, achou := spec.ObterPorID("c999"); achou {
+		t.Error("ObterPorID('c999') deveria retornar false para ID inexistente")
+	}
+
+	// 2. Validação exaustiva de todas as 150 cartas do acervo canônico
+	idsVistos := make(map[string]bool, 150)
+	polosVistos := make(map[string]string, 300)
+
+	for i := 1; i <= 150; i++ {
+		id := fmt.Sprintf("c%d", i)
+
+		carta, achou := spec.ObterPorID(id)
+		if !achou {
+			t.Fatalf("carta canônica %s não encontrada no catálogo definitivo", id)
+		}
+
+		if idsVistos[carta.ID] {
+			t.Errorf("ID duplicado no catálogo definitivo: %s", carta.ID)
+		}
+		idsVistos[carta.ID] = true
+
+		if carta.Esquerda == "" || carta.Direita == "" {
+			t.Errorf("carta %s possui polos em branco: '%s' / '%s'", carta.ID, carta.Esquerda, carta.Direita)
+		}
+		if carta.Esquerda == carta.Direita {
+			t.Errorf("carta %s possui polos idênticos: '%s'", carta.ID, carta.Esquerda)
+		}
+
+		if anterior, existe := polosVistos[carta.Esquerda]; existe {
+			t.Errorf("polo esquerdo '%s' da carta %s já usado na carta %s", carta.Esquerda, carta.ID, anterior)
+		}
+		polosVistos[carta.Esquerda] = carta.ID
+
+		if anterior, existe := polosVistos[carta.Direita]; existe {
+			t.Errorf("polo direito '%s' da carta %s já usado na carta %s", carta.Direita, carta.ID, anterior)
+		}
+		polosVistos[carta.Direita] = carta.ID
+	}
+
+	if len(idsVistos) != 150 {
+		t.Fatalf("esperado 150 IDs únicos no catálogo definitivo, obtido %d", len(idsVistos))
+	}
+	if len(polosVistos) != 300 {
+		t.Fatalf("esperado 300 polos textuais únicos no catálogo definitivo, obtido %d", len(polosVistos))
 	}
 }

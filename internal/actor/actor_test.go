@@ -208,4 +208,167 @@ func TestRoomActorLobbyBan(t *testing.T) {
 	}
 }
 
+func TestRoomActorEscolhaEspectroEAlternancia(t *testing.T) {
+	room := NewRoomActor("sala-espectro")
+	defer room.Encerrar()
+
+	// 4 jogadores entram
+	p1 := &ClientConn{PlayerID: "p1", DeviceID: "d1", Nome: "Alice", sendChan: make(chan []byte, 10)}
+	p2 := &ClientConn{PlayerID: "p2", DeviceID: "d2", Nome: "Bob", sendChan: make(chan []byte, 10)}
+	p3 := &ClientConn{PlayerID: "p3", DeviceID: "d3", Nome: "Carol", sendChan: make(chan []byte, 10)}
+	p4 := &ClientConn{PlayerID: "p4", DeviceID: "d4", Nome: "Dave", sendChan: make(chan []byte, 10)}
+
+	_ = room.DespacharSincrono("CONECTAR", "p1", nil, p1)
+	_ = room.DespacharSincrono("CONECTAR", "p2", nil, p2)
+	_ = room.DespacharSincrono("CONECTAR", "p3", nil, p3)
+	_ = room.DespacharSincrono("CONECTAR", "p4", nil, p4)
+
+	// p1 e p2 em Pato, p3 e p4 em Ganso (p1 e p3 mais antigos)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p1", map[string]interface{}{"equipe": entities.EquipePato}, nil)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p2", map[string]interface{}{"equipe": entities.EquipePato}, nil)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p3", map[string]interface{}{"equipe": entities.EquipeGanso}, nil)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p4", map[string]interface{}{"equipe": entities.EquipeGanso}, nil)
+
+	// Força início da rodada 1 com equipe Pato ativa
+	room.estado.EquipeAtiva = entities.EquipePato
+	room.estado.RodadaAtual = 1
+	room.prepararProximaRodada()
+
+	if room.estado.Fase != entities.FaseRodadaEspectro {
+		t.Fatalf("Esperava fase %s, obteve %s", entities.FaseRodadaEspectro, room.estado.Fase)
+	}
+
+	// Regra Canônica 1: Líder na 1ª rodada é o veterano mais antigo da equipe (p1)
+	if room.estado.Rodada.LiderRodadaID != "p1" {
+		t.Fatalf("Esperava líder inicial p1, obteve %s", room.estado.Rodada.LiderRodadaID)
+	}
+
+	// Regra Canônica 2: Prazo de 30 segundos estipulado
+	if room.estado.Rodada.PrazoEspectro.IsZero() || time.Until(room.estado.Rodada.PrazoEspectro) < 20*time.Second {
+		t.Fatalf("Prazo de espectro inválido: %v", room.estado.Rodada.PrazoEspectro)
+	}
+
+	if len(room.cartasOpcoes) != 2 {
+		t.Fatalf("Esperava 2 opções de cartas, obteve %d", len(room.cartasOpcoes))
+	}
+	carta0 := room.cartasOpcoes[0].ID
+	carta1 := room.cartasOpcoes[1].ID
+
+	// Visibilidade Universal: Projeção para adversário p3 e espectador deve conter as 2 cartas
+	snapP3 := room.ProjetarParaJogador("p3")
+	if len(snapP3.CartasEspectroOpcoes) != 2 {
+		t.Fatalf("Adversário p3 deveria visualizar as 2 opções em tempo real, obteve %d", len(snapP3.CartasEspectroOpcoes))
+	}
+
+	// Zero Trust: Adversário p3 e parceiro p2 tentam pré-selecionar (apenas o líder pode pré-selecionar)
+	_ = room.DespacharSincrono(protocol.TipoPreSelecionarEspectro, "p3", map[string]interface{}{"cartaId": carta0}, nil)
+	if room.estado.Rodada.CartaSelecionadaID != "" {
+		t.Fatalf("Adversário não pode pré-selecionar carta")
+	}
+
+	_ = room.DespacharSincrono(protocol.TipoPreSelecionarEspectro, "p2", map[string]interface{}{"cartaId": carta0}, nil)
+	if room.estado.Rodada.CartaSelecionadaID != "" {
+		t.Fatalf("Parceiro não-líder não pode pré-selecionar carta")
+	}
+
+	// Líder p1 pré-seleciona carta0
+	_ = room.DespacharSincrono(protocol.TipoPreSelecionarEspectro, "p1", map[string]interface{}{"cartaId": carta0}, nil)
+	if room.estado.Rodada.CartaSelecionadaID != carta0 {
+		t.Fatalf("Líder p1 deveria ter pré-selecionado %s, obteve %s", carta0, room.estado.Rodada.CartaSelecionadaID)
+	}
+
+	// Zero Trust: Líder p1 tenta votar (voto da mãozinha é do parceiro)
+	_ = room.DespacharSincrono(protocol.TipoVotarEspectro, "p1", map[string]interface{}{"cartaId": carta1}, nil)
+	if room.estado.Rodada.VotoParceiroCartaID != "" {
+		t.Fatalf("Líder não pode emitir voto da mãozinha")
+	}
+
+	// Parceiro p2 vota na carta1 (mãozinha)
+	_ = room.DespacharSincrono(protocol.TipoVotarEspectro, "p2", map[string]interface{}{"cartaId": carta1}, nil)
+	if room.estado.Rodada.VotoParceiroCartaID != carta1 {
+		t.Fatalf("Parceiro p2 deveria ter votado em %s, obteve %s", carta1, room.estado.Rodada.VotoParceiroCartaID)
+	}
+
+	// Toggle: Parceiro p2 vota novamente na mesma carta1 -> desmarca
+	_ = room.DespacharSincrono(protocol.TipoVotarEspectro, "p2", map[string]interface{}{"cartaId": carta1}, nil)
+	if room.estado.Rodada.VotoParceiroCartaID != "" {
+		t.Fatalf("Voto deveria ter sido desmarcado no toggle")
+	}
+
+	// Parceiro p2 marca novamente carta1
+	_ = room.DespacharSincrono(protocol.TipoVotarEspectro, "p2", map[string]interface{}{"cartaId": carta1}, nil)
+
+	// Zero Trust: p2 (não-líder) tenta confirmar a escolha
+	_ = room.DespacharSincrono(protocol.TipoEscolherEspectro, "p2", map[string]interface{}{"cartaId": carta1}, nil)
+	if room.estado.Fase != entities.FaseRodadaEspectro {
+		t.Fatalf("Não-líder p2 não pode confirmar a carta")
+	}
+
+	// Líder p1 confirma a carta0
+	_ = room.DespacharSincrono(protocol.TipoEscolherEspectro, "p1", map[string]interface{}{"cartaId": carta0}, nil)
+	if room.estado.Fase != entities.FaseRodadaDica {
+		t.Fatalf("Esperava transição para %s, obteve %s", entities.FaseRodadaDica, room.estado.Fase)
+	}
+	if !room.estado.Rodada.PrazoEspectro.IsZero() {
+		t.Fatalf("Prazo de espectro deveria ter sido zerado após confirmação")
+	}
+
+	// Grava quem foi o codificador e o líder da rodada 1 da Equipe Pato
+	cod1 := room.estado.Rodada.CodificadorID
+	palp1 := room.estado.Rodada.PalpiteiroID
+	lider1 := room.estado.Rodada.LiderRodadaID
+
+	if cod1 == palp1 {
+		t.Fatalf("Codificador e palpiteiro não podem ser a mesma pessoa com 2 jogadores")
+	}
+
+	// Avança para a rodada seguinte da Equipe Pato (simulando rodada 3)
+	room.estado.RodadaAtual = 3
+	room.estado.EquipeAtiva = entities.EquipePato
+	room.prepararProximaRodada()
+
+	// Regra Canônica de Alternância Compulsória:
+	// - Líder deve OBRIGATORIAMENTE alternar (se era p1, agora é p2)
+	if room.estado.Rodada.LiderRodadaID == lider1 {
+		t.Fatalf("Liderança não alternou! Era %s e permaneceu %s", lider1, room.estado.Rodada.LiderRodadaID)
+	}
+	// - Codificador deve OBRIGATORIAMENTE alternar (quem codificou agora palpita e vice-versa)
+	if room.estado.Rodada.CodificadorID == cod1 {
+		t.Fatalf("Codificador não alternou! Era %s e permaneceu %s", cod1, room.estado.Rodada.CodificadorID)
+	}
+	if room.estado.Rodada.PalpiteiroID == palp1 {
+		t.Fatalf("Palpiteiro não alternou! Era %s e permaneceu %s", palp1, room.estado.Rodada.PalpiteiroID)
+	}
+}
+
+func TestRoomActorTimeoutEspectro(t *testing.T) {
+	room := NewRoomActor("sala-timeout-espectro")
+	defer room.Encerrar()
+
+	p1 := &ClientConn{PlayerID: "p1", Nome: "Alice", sendChan: make(chan []byte, 10)}
+	p2 := &ClientConn{PlayerID: "p2", Nome: "Bob", sendChan: make(chan []byte, 10)}
+	_ = room.DespacharSincrono("CONECTAR", "p1", nil, p1)
+	_ = room.DespacharSincrono("CONECTAR", "p2", nil, p2)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p1", map[string]interface{}{"equipe": entities.EquipePato}, nil)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p2", map[string]interface{}{"equipe": entities.EquipePato}, nil)
+
+	room.estado.EquipeAtiva = entities.EquipePato
+	room.prepararProximaRodada()
+
+	// Vota com o parceiro mas líder deixa o tempo expirar
+	voto := room.cartasOpcoes[1].ID
+	_ = room.DespacharSincrono(protocol.TipoVotarEspectro, "p2", map[string]interface{}{"cartaId": voto}, nil)
+
+	// Simula timeout expirado
+	room.resolverTimeoutEspectro()
+
+	if room.estado.Fase != entities.FaseRodadaDica {
+		t.Fatalf("Timeout deveria ter avançado a sala para %s, está em %s", entities.FaseRodadaDica, room.estado.Fase)
+	}
+	if room.estado.Rodada.EspectroEsquerda != room.cartasOpcoes[1].Esquerda {
+		t.Fatalf("Deveria ter adotado o voto do parceiro %s", room.cartasOpcoes[1].Esquerda)
+	}
+}
+
+
 

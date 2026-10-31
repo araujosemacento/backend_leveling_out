@@ -11,8 +11,7 @@ import (
 // Projeções Puras e Seguras (Zero Trust)
 // ==========================================
 
-func (r *RoomActor) broadcastZeroTrust() {
-	// Lista pública de jogadores
+func (r *RoomActor) obterListaJogadoresSnapshot() []protocol.SnapshotJogador {
 	var listaJogadores []protocol.SnapshotJogador
 	for _, j := range r.estado.Jogadores {
 		listaJogadores = append(listaJogadores, protocol.SnapshotJogador{
@@ -26,12 +25,14 @@ func (r *RoomActor) broadcastZeroTrust() {
 			EquipeDesde: j.EquipeDesde,
 		})
 	}
-
-	// Ordena jogadores por nome para determinismo
 	sort.Slice(listaJogadores, func(i, j int) bool {
 		return listaJogadores[i].Nome < listaJogadores[j].Nome
 	})
+	return listaJogadores
+}
 
+func (r *RoomActor) broadcastZeroTrust() {
+	listaJogadores := r.obterListaJogadoresSnapshot()
 	for playerID, conn := range r.conexoes {
 		proj := r.gerarProjecaoZeroTrust(playerID, listaJogadores)
 		conn.EnviarJSON(protocol.MensagemOut{
@@ -39,6 +40,11 @@ func (r *RoomActor) broadcastZeroTrust() {
 			Payload: proj,
 		})
 	}
+}
+
+// ProjetarParaJogador gera a projeção Zero Trust personalizada para um dado jogador
+func (r *RoomActor) ProjetarParaJogador(playerID string) protocol.SnapshotSalaProjetado {
+	return r.gerarProjecaoZeroTrust(playerID, r.obterListaJogadoresSnapshot())
 }
 
 func (r *RoomActor) gerarProjecaoZeroTrust(playerID string, listaJogadores []protocol.SnapshotJogador) protocol.SnapshotSalaProjetado {
@@ -75,16 +81,24 @@ func (r *RoomActor) gerarProjecaoZeroTrust(playerID string, listaJogadores []pro
 
 	// 2. Projeção da Rodada (Blindagem de Meta Oculta)
 	snapRodada := protocol.SnapshotRodada{
-		Numero:           r.estado.Rodada.Numero,
-		Equipe:           r.estado.Rodada.Equipe,
-		CodificadorID:    r.estado.Rodada.CodificadorID,
-		PalpiteiroID:     r.estado.Rodada.PalpiteiroID,
-		EspectroEsquerda: r.estado.Rodada.EspectroEsquerda,
-		EspectroDireita:  r.estado.Rodada.EspectroDireita,
-		Dica:             r.estado.Rodada.Dica,
-		Pontos:           r.estado.Rodada.Pontos,
-		Tier:             r.estado.Rodada.Tier,
-		Label:            r.estado.Rodada.Label,
+		Numero:              r.estado.Rodada.Numero,
+		Equipe:              r.estado.Rodada.Equipe,
+		CodificadorID:       r.estado.Rodada.CodificadorID,
+		PalpiteiroID:        r.estado.Rodada.PalpiteiroID,
+		LiderRodadaID:       r.estado.Rodada.LiderRodadaID,
+		CartaSelecionadaID:  r.estado.Rodada.CartaSelecionadaID,
+		VotoParceiroCartaID: r.estado.Rodada.VotoParceiroCartaID,
+		EspectroEsquerda:    r.estado.Rodada.EspectroEsquerda,
+		EspectroDireita:     r.estado.Rodada.EspectroDireita,
+		Dica:                r.estado.Rodada.Dica,
+		Pontos:              r.estado.Rodada.Pontos,
+		Tier:                r.estado.Rodada.Tier,
+		Label:               r.estado.Rodada.Label,
+	}
+
+	if !r.estado.Rodada.PrazoEspectro.IsZero() {
+		prazo := r.estado.Rodada.PrazoEspectro
+		snapRodada.PrazoEspectro = &prazo
 	}
 
 	if r.estado.Fase == entities.FaseRodadaRevelada || r.estado.Fase == entities.FaseFimJogo {
@@ -96,9 +110,9 @@ func (r *RoomActor) gerarProjecaoZeroTrust(playerID string, listaJogadores []pro
 		snapRodada.MetaOculta = &r.estado.Rodada.MetaOculta
 	}
 
-	// 3. Opções de espectro (visíveis para o Codificador na fase de escolha)
+	// 3. Opções de espectro (visíveis universalmente para todos na fase de escolha)
 	var opcoes []interface{}
-	if r.estado.Fase == entities.FaseRodadaEspectro && playerID == r.estado.Rodada.CodificadorID {
+	if r.estado.Fase == entities.FaseRodadaEspectro {
 		for _, c := range r.cartasOpcoes {
 			opcoes = append(opcoes, c)
 		}

@@ -42,6 +42,10 @@ type RoomActor struct {
 	// Opções de cartas ativas para a fase de escolha
 	cartasOpcoes []components.SpectrumCard
 
+	// Rastreamento de alternância compulsória por equipe (equipe -> playerID)
+	ultimoCodificador map[string]string
+	ultimoLider       map[string]string
+
 	// Listas autoritativas de banimento da sala atual
 	dispositivosBanidos map[string]bool
 	jogadoresBanidos     map[string]bool
@@ -73,6 +77,8 @@ func NewRoomActor(codigo string) *RoomActor {
 		proximity:           components.NewProximityComponent(),
 		secretTarget:        components.NewSecretTargetComponent(),
 		spectrums:           components.NewSpectrumsComponent(),
+		ultimoCodificador:   make(map[string]string),
+		ultimoLider:         make(map[string]string),
 		dispositivosBanidos: make(map[string]bool),
 		jogadoresBanidos:     make(map[string]bool),
 		ultimaAtividade:     time.Now(),
@@ -152,6 +158,10 @@ func (r *RoomActor) processarEvento(ev EventoInterno) {
 		r.handleDesfazerPartida(ev.PlayerID)
 	case protocol.TipoLancePpt:
 		r.handleLancePpt(ev.PlayerID, ev.Payload)
+	case protocol.TipoPreSelecionarEspectro:
+		r.handlePreSelecionarEspectro(ev.PlayerID, ev.Payload)
+	case protocol.TipoVotarEspectro:
+		r.handleVotarEspectro(ev.PlayerID, ev.Payload)
 	case protocol.TipoEscolherEspectro:
 		r.handleEscolherEspectro(ev.PlayerID, ev.Payload)
 	case protocol.TipoSubmeterDica:
