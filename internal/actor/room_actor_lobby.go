@@ -2,6 +2,7 @@ package actor
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -45,6 +46,27 @@ func (r *RoomActor) handleConectar(conn *ClientConn) {
 			})
 			conn.Fechar()
 			return
+		}
+
+		// Validação Zero Trust do apelido no backend
+		nomeLimpo := strings.TrimSpace(conn.Nome)
+		if nomeLimpo == "" || len([]rune(nomeLimpo)) > 20 || strings.ContainsAny(nomeLimpo, "<>") {
+			conn.EnviarJSON(protocol.MensagemOut{
+				Tipo:    protocol.TipoErro,
+				Payload: map[string]string{"mensagem": "Nickname inválido"},
+			})
+			conn.Fechar()
+			return
+		}
+		for _, rChar := range nomeLimpo {
+			if rChar >= 0x1F000 {
+				conn.EnviarJSON(protocol.MensagemOut{
+					Tipo:    protocol.TipoErro,
+					Payload: map[string]string{"mensagem": "Nickname inválido"},
+				})
+				conn.Fechar()
+				return
+			}
 		}
 
 		// Criação de assento para o novo jogador
