@@ -79,9 +79,6 @@ func main() {
 		deviceID := strings.TrimSpace(r.URL.Query().Get("device_id"))
 		token := strings.TrimSpace(r.URL.Query().Get("token"))
 		nome := strings.TrimSpace(r.URL.Query().Get("nome"))
-		if nome == "" {
-			nome = "Convidado"
-		}
 
 		// Upgrade HTTP -> WebSocket (aceita origens cruzadas locais e de produção)
 		ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{

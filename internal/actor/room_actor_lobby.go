@@ -2,6 +2,7 @@ package actor
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -13,6 +14,19 @@ import (
 // ==========================================
 // Handlers de Conexão e Presença
 // ==========================================
+
+func validarApelido(raw string) (string, bool) {
+	limpo := strings.TrimSpace(raw)
+	if limpo == "" || len([]rune(limpo)) > 20 || strings.ContainsAny(limpo, "<>") {
+		return "", false
+	}
+	for _, rChar := range limpo {
+		if rChar >= 0x1F000 || (rChar >= 0x2600 && rChar <= 0x27BF) || rChar == 0x20E3 || rChar == 0x2B50 {
+			return "", false
+		}
+	}
+	return limpo, true
+}
 
 func (r *RoomActor) handleConectar(conn *ClientConn) {
 	// 1. Checagem autoritativa de banimento por dispositivo ou player_id
@@ -47,6 +61,16 @@ func (r *RoomActor) handleConectar(conn *ClientConn) {
 			return
 		}
 
+		// Validação Zero Trust do apelido no backend
+		nomeLimpo, ok := validarApelido(conn.Nome)
+		if !ok {
+			conn.EnviarJSONESair(protocol.MensagemOut{
+				Tipo:    protocol.TipoErro,
+				Payload: map[string]string{"mensagem": "Nickname inválido"},
+			}, websocket.StatusPolicyViolation, "nickname_invalido")
+			return
+		}
+
 		// Criação de assento para o novo jogador
 		token := gerarTokenSeguro()
 		conn.SessionToken = token
@@ -56,7 +80,7 @@ func (r *RoomActor) handleConectar(conn *ClientConn) {
 			ID:           "j_" + gerarIDCurto(),
 			SalaCodigo:   r.codigo,
 			PlayerID:     conn.PlayerID,
-			Nome:         conn.Nome,
+			Nome:         nomeLimpo,
 			Equipe:       entities.EquipeAleatorio,
 			Papel:        entities.PapelEspectador,
 			IsHost:       isHost,
@@ -82,11 +106,20 @@ func (r *RoomActor) handleConectar(conn *ClientConn) {
 			return
 		}
 
+		if conn.Nome != "" {
+			nomeLimpo, ok := validarApelido(conn.Nome)
+			if !ok {
+				conn.EnviarJSONESair(protocol.MensagemOut{
+					Tipo:    protocol.TipoErro,
+					Payload: map[string]string{"mensagem": "Nickname inválido"},
+				}, websocket.StatusPolicyViolation, "nickname_invalido")
+				return
+			}
+			jogador.Nome = nomeLimpo
+		}
+
 		jogador.IsOnline = true
 		jogador.LastSeen = time.Now()
-		if conn.Nome != "" {
-			jogador.Nome = conn.Nome
-		}
 	}
 
 	// Registra socket ativo

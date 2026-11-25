@@ -370,5 +370,58 @@ func TestRoomActorTimeoutEspectro(t *testing.T) {
 	}
 }
 
+func TestRoomActorRejeitaNicknameInvalido(t *testing.T) {
+	room := NewRoomActor("sala-nick-invalido")
+	defer room.Encerrar()
+
+	casosInvalidos := []struct {
+		id   string
+		nome string
+	}{
+		{id: "p_vazio", nome: ""},
+		{id: "p_espacos", nome: "   "},
+		{id: "p_longo", nome: "JogadorSuperUltraMegaLongoDemais"},
+		{id: "p_html", nome: "<script>alert(1)</script>"},
+		{id: "p_emoji_sup", nome: "\U0001F986 Pato"},
+		{id: "p_emoji_bmp", nome: "Estrela \u2B50"},
+	}
+
+	for _, caso := range casosInvalidos {
+		conn := &ClientConn{PlayerID: caso.id, Nome: caso.nome, sendChan: make(chan []byte, 10)}
+		_ = room.DespacharSincrono("CONECTAR", caso.id, nil, conn)
+
+		if _, existe := room.estado.Jogadores[caso.id]; existe {
+			t.Fatalf("Jogador %s (%q) com apelido inválido não deveria ser admitido", caso.id, caso.nome)
+		}
+		if !conn.fechado {
+			t.Fatalf("Conexão de %s (%q) deveria ter sido encerrada", caso.id, caso.nome)
+		}
+	}
+
+	// Jogador entra com apelido válido e tenta bypass na reconexão autenticada
+	valido := &ClientConn{PlayerID: "p_valido", Nome: "Alice", sendChan: make(chan []byte, 10)}
+	_ = room.DespacharSincrono("CONECTAR", "p_valido", nil, valido)
+
+	j, existe := room.estado.Jogadores["p_valido"]
+	if !existe {
+		t.Fatalf("Jogador válido p_valido deveria ter ingressado")
+	}
+
+	reconInvalida := &ClientConn{
+		PlayerID:     "p_valido",
+		Nome:         "<script>",
+		SessionToken: j.SessionToken,
+		sendChan:     make(chan []byte, 10),
+	}
+	_ = room.DespacharSincrono("CONECTAR", "p_valido", nil, reconInvalida)
+
+	if !reconInvalida.fechado {
+		t.Fatalf("Reconexão com apelido inválido deveria encerrar a conexão")
+	}
+	if room.estado.Jogadores["p_valido"].Nome != "Alice" {
+		t.Fatalf("Nome do jogador não deveria ser sobrescrito para %q", room.estado.Jogadores["p_valido"].Nome)
+	}
+}
+
 
 
