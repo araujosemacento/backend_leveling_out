@@ -193,12 +193,19 @@ func (r *RoomActor) handleSubmeterDica(playerID string, payload map[string]inter
 	}
 
 	dicaBruta, _ := payload["dica"].(string)
-	dica := strings.TrimSpace(dicaBruta)
+	dica := strings.Map(func(r rune) rune {
+		if r == '<' || r == '>' || r < 32 || r == 127 {
+			return -1
+		}
+		return r
+	}, dicaBruta)
+	dica = strings.Join(strings.Fields(dica), " ")
 	if dica == "" {
 		return
 	}
-	if len(dica) > 60 {
-		dica = dica[:60]
+	runas := []rune(dica)
+	if len(runas) > 60 {
+		dica = strings.TrimSpace(string(runas[:60]))
 	}
 
 	r.estado.Rodada.Dica = dica
@@ -278,7 +285,7 @@ func (r *RoomActor) handleConfirmarPalpite(playerID string) {
 	})
 
 	r.estado.Fase = entities.FaseRodadaRevelada
-	r.timerTransicao = time.Now().Add(4 * time.Second)
+	r.timerTransicao = time.Now().Add(6500 * time.Millisecond)
 	r.acaoTransicao = "AVANCAR_APOS_REVELACAO"
 
 	r.broadcastZeroTrust()

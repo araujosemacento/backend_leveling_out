@@ -1,8 +1,10 @@
 package actor
 
 import (
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"leveling-out-backend/internal/components"
 	"leveling-out-backend/internal/entities"
@@ -423,5 +425,137 @@ func TestRoomActorRejeitaNicknameInvalido(t *testing.T) {
 	}
 }
 
+func TestRoomActorCicloCompletoRevelacaoEVitoria(t *testing.T) {
+	room := NewRoomActor("sala-revelacao-vitoria")
+	defer room.Encerrar()
 
+	p1 := &ClientConn{PlayerID: "p1", DeviceID: "d1", Nome: "Alice", sendChan: make(chan []byte, 20)}
+	p2 := &ClientConn{PlayerID: "p2", DeviceID: "d2", Nome: "Bob", sendChan: make(chan []byte, 20)}
+	p3 := &ClientConn{PlayerID: "p3", DeviceID: "d3", Nome: "Carol", sendChan: make(chan []byte, 20)}
+	p4 := &ClientConn{PlayerID: "p4", DeviceID: "d4", Nome: "Dave", sendChan: make(chan []byte, 20)}
 
+	_ = room.DespacharSincrono("CONECTAR", "p1", nil, p1)
+	_ = room.DespacharSincrono("CONECTAR", "p2", nil, p2)
+	_ = room.DespacharSincrono("CONECTAR", "p3", nil, p3)
+	_ = room.DespacharSincrono("CONECTAR", "p4", nil, p4)
+
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p1", map[string]interface{}{"equipe": entities.EquipePato}, nil)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p2", map[string]interface{}{"equipe": entities.EquipePato}, nil)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p3", map[string]interface{}{"equipe": entities.EquipeGanso}, nil)
+	_ = room.DespacharSincrono(protocol.TipoEscolherEquipe, "p4", map[string]interface{}{"equipe": entities.EquipeGanso}, nil)
+
+	// Inicia rodada 1 para a equipe Pato
+	room.estado.EquipeAtiva = entities.EquipePato
+	room.estado.RodadaAtual = 1
+	room.prepararProximaRodada()
+
+	liderID := room.estado.Rodada.LiderRodadaID
+	cartaID := room.cartasOpcoes[0].ID
+	_ = room.DespacharSincrono(protocol.TipoEscolherEspectro, liderID, map[string]interface{}{"cartaId": cartaID}, nil)
+
+	if room.estado.Fase != entities.FaseRodadaDica {
+		t.Fatalf("Esperava fase %s, obteve %s", entities.FaseRodadaDica, room.estado.Fase)
+	}
+
+	// Submissão de dica com acentos UTF-8 > 60 runes, caracteres angulares < > e controle
+	codID := room.estado.Rodada.CodificadorID
+	palpID := room.estado.Rodada.PalpiteiroID
+	dicaEntrada := "<Café>   quente\tcom\n<açúcar>   mascavo   e   pão   de   queijo   artesanal   mineiro"
+	_ = room.DespacharSincrono(protocol.TipoSubmeterDica, codID, map[string]interface{}{"dica": dicaEntrada}, nil)
+
+	if room.estado.Fase != entities.FaseRodadaPalpite {
+		t.Fatalf("Esperava fase %s, obteve %s", entities.FaseRodadaPalpite, room.estado.Fase)
+	}
+
+	dicaSalva := room.estado.Rodada.Dica
+	if !utf8.ValidString(dicaSalva) {
+		t.Fatalf("Dica truncada deve preservar UTF-8 válido, obteve %q", dicaSalva)
+	}
+	if gotRunes := utf8.RuneCountInString(dicaSalva); gotRunes != 60 {
+		t.Fatalf("Dica deveria ter exatamente 60 runes, obteve %d (%q)", gotRunes, dicaSalva)
+	}
+	if strings.ContainsAny(dicaSalva, "<>\t\n") {
+		t.Fatalf("Dica não pode conter <, > ou caracteres de controle, obteve %q", dicaSalva)
+	}
+
+	// Move o slider durante RODADA_PALPITE
+	_ = room.DespacharSincrono(protocol.TipoSliderMover, palpID, map[string]interface{}{"posicao": 68.4}, nil)
+
+	// Zero Trust durante RODADA_PALPITE: Palpiteiro vê SliderPosicao, mas nunca MetaOculta nem Diff
+	snapPalp := room.ProjetarParaJogador(palpID)
+	if snapPalp.RodadaAtiva.MetaOculta != nil {
+		t.Fatalf("MetaOculta deveria ser nil para o Palpiteiro em RODADA_PALPITE")
+	}
+	if snapPalp.RodadaAtiva.Diff != nil {
+		t.Fatalf("Diff deveria ser nil para o Palpiteiro em RODADA_PALPITE")
+	}
+	if snapPalp.RodadaAtiva.SliderPosicao == nil || *snapPalp.RodadaAtiva.SliderPosicao != 68.4 {
+		t.Fatalf("SliderPosicao esperada 68.4 para o Palpiteiro, obteve %v", snapPalp.RodadaAtiva.SliderPosicao)
+	}
+
+	// Mesmo o Codificador não deve receber Diff antes da revelação
+	snapCod := room.ProjetarParaJogador(codID)
+	if snapCod.RodadaAtiva.Diff != nil {
+		t.Fatalf("Diff deveria ser nil antes da revelação mesmo para o Codificador")
+	}
+
+	// Prepara placar para garantir vitória após confirmação do palpite
+	meta := room.estado.Rodada.MetaOculta
+	_ = room.DespacharSincrono(protocol.TipoSliderMover, palpID, map[string]interface{}{"posicao": float64(meta)}, nil)
+	room.estado.PlacarA = entities.MetaPontuacaoPadrao - 4
+
+	// Confirma palpite -> transição para REVELACAO
+	_ = room.DespacharSincrono(protocol.TipoConfirmarPalpite, palpID, nil, nil)
+
+	if room.estado.Fase != entities.FaseRodadaRevelada {
+		t.Fatalf("Esperava fase %s após confirmar palpite, obteve %s", entities.FaseRodadaRevelada, room.estado.Fase)
+	}
+	if restante := time.Until(room.timerTransicao); restante <= 4500*time.Millisecond || restante > 7*time.Second {
+		t.Fatalf("Janela de revelação deveria ser ~6.5s, obteve %v", restante)
+	}
+
+	// Verifica projeção completa em REVELACAO para todos (Palpiteiro e Adversário)
+	for _, id := range []string{palpID, "p3"} {
+		snapRev := room.ProjetarParaJogador(id)
+		if snapRev.RodadaAtiva.MetaOculta == nil || *snapRev.RodadaAtiva.MetaOculta != meta {
+			t.Fatalf("MetaOculta deveria estar visível para %s em REVELACAO", id)
+		}
+		if snapRev.RodadaAtiva.Palpite == nil || *snapRev.RodadaAtiva.Palpite != meta {
+			t.Fatalf("Palpite deveria estar visível para %s em REVELACAO", id)
+		}
+		if snapRev.RodadaAtiva.Diff == nil || *snapRev.RodadaAtiva.Diff != 0 {
+			t.Fatalf("Diff deveria ser 0 para %s em REVELACAO, obteve %v", id, snapRev.RodadaAtiva.Diff)
+		}
+		if snapRev.RodadaAtiva.TransicaoEm == nil || snapRev.RodadaAtiva.TransicaoEm.IsZero() {
+			t.Fatalf("TransicaoEm deveria estar presente para %s em REVELACAO", id)
+		}
+		if snapRev.RodadaAtiva.SliderPosicao != nil {
+			t.Fatalf("SliderPosicao só deve ser exposta em RODADA_PALPITE")
+		}
+		if len(snapRev.Historico) != 1 {
+			t.Fatalf("Historico deveria ter 1 item para %s, obteve %d", id, len(snapRev.Historico))
+		}
+	}
+
+	// Expira janela de revelação -> transição para FIM_JOGO (vitória da equipe Pato)
+	room.timerTransicao = time.Now().Add(-100 * time.Millisecond)
+	room.processarTicksTemporais()
+
+	if room.estado.Fase != entities.FaseFimJogo {
+		t.Fatalf("Esperava transição para %s após atingir meta de pontos, obteve %s", entities.FaseFimJogo, room.estado.Fase)
+	}
+
+	snapFim := room.ProjetarParaJogador(palpID)
+	if snapFim.Vencedor != entities.EquipePato {
+		t.Fatalf("Vencedor esperado %s, obteve %s", entities.EquipePato, snapFim.Vencedor)
+	}
+	if snapFim.RodadaAtiva.Diff == nil || snapFim.RodadaAtiva.MetaOculta == nil || snapFim.RodadaAtiva.Palpite == nil {
+		t.Fatalf("Diff, MetaOculta e Palpite devem permanecer visíveis em FIM_JOGO")
+	}
+	if snapFim.RodadaAtiva.TransicaoEm != nil {
+		t.Fatalf("TransicaoEm deve ser nil em FIM_JOGO")
+	}
+	if len(snapFim.Historico) != 1 {
+		t.Fatalf("Historico deve conter 1 rodada concluída em FIM_JOGO, obteve %d", len(snapFim.Historico))
+	}
+}

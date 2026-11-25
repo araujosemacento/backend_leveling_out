@@ -101,10 +101,24 @@ func (r *RoomActor) gerarProjecaoZeroTrust(playerID string, listaJogadores []pro
 		snapRodada.PrazoEspectro = &prazo
 	}
 
+	if r.estado.Fase == entities.FaseRodadaPalpite {
+		pos := r.estado.Rodada.SliderPosicao
+		snapRodada.SliderPosicao = &pos
+	}
+
 	if r.estado.Fase == entities.FaseRodadaRevelada || r.estado.Fase == entities.FaseFimJogo {
 		snapRodada.MetaOculta = &r.estado.Rodada.MetaOculta
 		palpiteVal := r.estado.Rodada.Palpite
 		snapRodada.Palpite = &palpiteVal
+		diffVal := r.estado.Rodada.MetaOculta - r.estado.Rodada.Palpite
+		if diffVal < 0 {
+			diffVal = -diffVal
+		}
+		snapRodada.Diff = &diffVal
+		if r.estado.Fase == entities.FaseRodadaRevelada && !r.timerTransicao.IsZero() {
+			t := r.timerTransicao
+			snapRodada.TransicaoEm = &t
+		}
 	} else if playerID == r.estado.Rodada.CodificadorID {
 		// Apenas o Codificador da vez visualiza o tubo cheio durante a dica e palpite
 		snapRodada.MetaOculta = &r.estado.Rodada.MetaOculta
@@ -132,5 +146,6 @@ func (r *RoomActor) gerarProjecaoZeroTrust(playerID string, listaJogadores []pro
 		Ppt:                  snapPpt,
 		RodadaAtiva:          snapRodada,
 		CartasEspectroOpcoes: opcoes,
+		Historico:            r.estado.Historico,
 	}
 }

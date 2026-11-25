@@ -1,22 +1,26 @@
 package protocol
 
-import "time"
+import (
+	"time"
+
+	"leveling-out-backend/internal/entities"
+)
 
 // Tipos de mensagens de ENTRADA (Cliente -> Servidor)
 const (
-	TipoEscolherEquipe   = "ESCOLHER_EQUIPE"
-	TipoIniciarPartida   = "INICIAR_PARTIDA"
-	TipoExpulsarJogador  = "EXPULSAR_JOGADOR"
-	TipoBanirJogador     = "BANIR_JOGADOR"
-	TipoDesfazerPartida  = "DESFAZER_PARTIDA"
-	TipoLancePpt            = "LANCE_PPT"
-	TipoEscolherEspectro    = "ESCOLHER_ESPECTRO"
+	TipoEscolherEquipe        = "ESCOLHER_EQUIPE"
+	TipoIniciarPartida        = "INICIAR_PARTIDA"
+	TipoExpulsarJogador       = "EXPULSAR_JOGADOR"
+	TipoBanirJogador          = "BANIR_JOGADOR"
+	TipoDesfazerPartida       = "DESFAZER_PARTIDA"
+	TipoLancePpt              = "LANCE_PPT"
+	TipoEscolherEspectro      = "ESCOLHER_ESPECTRO"
 	TipoPreSelecionarEspectro = "PRE_SELECIONAR_ESPECTRO"
-	TipoVotarEspectro       = "VOTAR_ESPECTRO"
-	TipoSubmeterDica        = "SUBMETER_DICA"
-	TipoSliderMover      = "SLIDER_MOVER"
-	TipoConfirmarPalpite = "CONFIRMAR_PALPITE"
-	TipoRevanche         = "REVANCHE"
+	TipoVotarEspectro         = "VOTAR_ESPECTRO"
+	TipoSubmeterDica          = "SUBMETER_DICA"
+	TipoSliderMover           = "SLIDER_MOVER"
+	TipoConfirmarPalpite      = "CONFIRMAR_PALPITE"
+	TipoRevanche              = "REVANCHE"
 )
 
 // Tipos de mensagens de SAÍDA (Servidor -> Cliente)
@@ -112,17 +116,17 @@ type SnapshotJogador struct {
 
 // SnapshotPpt representa o estado da disputa projetado para um participante
 type SnapshotPpt struct {
-	Estado          string     `json:"estado"` // ESCOLHA, CONTAGEM, RESULTADO
-	Prazo           *time.Time `json:"prazo,omitempty"`
-	RevelacaoEm     *time.Time `json:"revelacaoEm,omitempty"`
-	EnviouA         bool       `json:"enviouA"`
-	EnviouB         bool       `json:"enviouB"`
-	RepresentanteA  string     `json:"representanteA"`
-	RepresentanteB  string     `json:"representanteB"`
-	Resultado       string     `json:"resultado,omitempty"`
-	LanceA          string     `json:"lanceA,omitempty"`
-	LanceB          string     `json:"lanceB,omitempty"`
-	MeuLance        string     `json:"meuLance,omitempty"` // Disponível apenas para o representante da própria equipe
+	Estado         string     `json:"estado"` // ESCOLHA, CONTAGEM, RESULTADO
+	Prazo          *time.Time `json:"prazo,omitempty"`
+	RevelacaoEm    *time.Time `json:"revelacaoEm,omitempty"`
+	EnviouA        bool       `json:"enviouA"`
+	EnviouB        bool       `json:"enviouB"`
+	RepresentanteA string     `json:"representanteA"`
+	RepresentanteB string     `json:"representanteB"`
+	Resultado      string     `json:"resultado,omitempty"`
+	LanceA         string     `json:"lanceA,omitempty"`
+	LanceB         string     `json:"lanceB,omitempty"`
+	MeuLance       string     `json:"meuLance,omitempty"` // Disponível apenas para o representante da própria equipe
 }
 
 // SnapshotRodada representa o estado da rodada ativa projetado
@@ -140,25 +144,29 @@ type SnapshotRodada struct {
 	MetaOculta          *int       `json:"metaOculta,omitempty"` // Nulo para quem não for Codificador até REVELACAO
 	Dica                string     `json:"dica,omitempty"`
 	Palpite             *int       `json:"palpite,omitempty"`
+	SliderPosicao       *float64   `json:"sliderPosicao,omitempty"`
 	Pontos              int        `json:"pontos"`
 	Tier                string     `json:"tier,omitempty"`
 	Label               string     `json:"label,omitempty"`
+	Diff                *int       `json:"diff,omitempty"`
+	TransicaoEm         *time.Time `json:"transicaoEm,omitempty"`
 }
 
 // SnapshotSalaProjetado é o modelo canônico de FULL_SYNC entregue ao GameEngine
 type SnapshotSalaProjetado struct {
-	Codigo                  string            `json:"codigo"`
-	Fase                    string            `json:"fase"`
-	Rodada                  int               `json:"rodada"`
-	EquipeAtiva             string            `json:"equipeAtiva"`
-	PlacarA                 int               `json:"placarA"`
-	PlacarB                 int               `json:"placarB"`
-	Vencedor                string            `json:"vencedor,omitempty"`
-	HostID                  string            `json:"hostId"`
-	MotivoFim               string            `json:"motivoFim,omitempty"`
-	Jogadores               []SnapshotJogador `json:"jogadores"`
-	Ppt                     SnapshotPpt       `json:"ppt"`
-	RodadaAtiva             SnapshotRodada    `json:"rodadaAtiva"`
-	CartasEspectroOpcoes    []interface{}     `json:"cartasOpcoes,omitempty"` // Duas opções para ESCOLHA_ESPECTRO
-	DesconectadosRecentes   []string          `json:"desconectados,omitempty"`
+	Codigo                string                  `json:"codigo"`
+	Fase                  string                  `json:"fase"`
+	Rodada                int                     `json:"rodada"`
+	EquipeAtiva           string                  `json:"equipeAtiva"`
+	PlacarA               int                     `json:"placarA"`
+	PlacarB               int                     `json:"placarB"`
+	Vencedor              string                  `json:"vencedor,omitempty"`
+	HostID                string                  `json:"hostId"`
+	MotivoFim             string                  `json:"motivoFim,omitempty"`
+	Jogadores             []SnapshotJogador       `json:"jogadores"`
+	Ppt                   SnapshotPpt             `json:"ppt"`
+	RodadaAtiva           SnapshotRodada          `json:"rodadaAtiva"`
+	CartasEspectroOpcoes  []interface{}           `json:"cartasOpcoes,omitempty"` // Duas opções para ESCOLHA_ESPECTRO
+	Historico             []entities.RodadaResumo `json:"historico,omitempty"`
+	DesconectadosRecentes []string                `json:"desconectados,omitempty"`
 }
